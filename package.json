@@ -1,0 +1,8 @@
+{
+  "name": "ceci-channels",
+  "version": "0.1.0",
+  "main": "./index.js",
+  "dependencies": {
+    "ceci-core": "odf/ceci-core"
+  }
+}
