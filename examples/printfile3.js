@@ -13,8 +13,11 @@ var content = function(path) {
 var toChannel = function(array) {
   var ch = cc.chan();
 
-  array.forEach(cc.push.bind(null, ch));
-  cc.close(ch);
+  core.go(function*() {
+    for (var i = 0; i < array.length; ++i)
+      yield cc.push(ch, array[i]);
+    cc.close(ch);
+  });
 
   return ch;
 };

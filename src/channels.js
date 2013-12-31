@@ -88,8 +88,15 @@ Channel.prototype.cancelRequest = function(client) {
 };
 
 Channel.prototype.close = function() {
-  while (this.pressure < 0)
-    this.tryPush();
+  var val = this.pressure < 0 ? undefined : false;
+
+  this.pending.forEach(function(client) {
+    client.resolve(val);
+  });
+
+  this.pending = [];
+  this.data = [];
+  this.pressure = 0;
   this.isClosed = true;
 };
 
