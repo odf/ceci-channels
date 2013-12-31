@@ -3,7 +3,7 @@ ceci-channels
 
 Ceci is a Javascript library inspired by [Go](http://golang.org/)'s channels and goroutines and by [Clojure](http://clojure.org/)'s [core.async](https://github.com/clojure/core.async/). It depends on ES6 generators and requires a preprocessor to run under Javascript engines that do not yet support those. An easy way to use Ceci directly right now is under NodeJS 0.11.x with the `--harmony` option.
 
-Ceci-channels builds upon the functionality in [ceci-core](https://github.com/odf/ceci-core), which forms the bottom layer of the library. Ceci-core provides go blocks and deferred values, which together let one integrate asynchronous, non-blocking calls into code as if they were blocking. On top of these base abstractions, ceci-channels adds blocking channels with various buffering options as the primary communication mechanism between go blocks. It also provides a small number of utilities such as timeouts and tickers, a channel adapter for NodeJS streams, and wrapping mechanisms for function calls that conform to Node's callback conventions.
+Ceci-channels builds upon the functionality in [ceci-core](https://github.com/odf/ceci-core), which forms the bottom layer of the library. Ceci-core provides go blocks and deferred values, which together let one integrate asynchronous, non-blocking calls into code as if they were blocking. On top of these base abstractions, ceci-channels adds blocking channels with various buffering options as the primary communication mechanism between go blocks. It also provides a small number of utilities such as timeouts and tickers, a channel adapter for NodeJS streams, and wrapping mechanisms for function calls that conform to NodeJS's callback conventions.
 
 Here is a simple example of channels in action:
 ```javascript
@@ -27,7 +27,7 @@ core.go(function*() {
 
 Unsurprisingly, this prints out the numbers 1 to 10, each on a line by itself.
 
-We first create a channel by calling the function `chan()`. We then run two go blocks, one that writes (pushes) values onto the channel, and another that reads (pulls) from it. The functions `push()` and `pull()` both return deferred values and are normally used in combination with a `yield`. In this example, the channel is unbuffered, which means that a push onto it will block until there is a corresponding pull and vice versa. A channel always produces values in the same order as they were written to it, so in effect, it acts as a blocking queue.
+We first create a channel by calling the function `chan()`. We then run two go blocks, one that writes (pushes) values onto the channel, and another that reads (pulls) from it. The functions `push()` and `pull()` both return deferred values and are usually used in combination with a `yield`. In this example, the channel is unbuffered, which means that a push onto it will block until there is a corresponding pull and vice versa. A channel always produces values in the same order as they were written to it, so in effect, it acts as a blocking queue.
 
 The `close()` function closes a channel immediately, which means that no further pushes onto it will be accepted. It may still be possible to pull from the channel if it has a non-empty buffer or if there are pending pushes onto it. We will get to these situations in detail a bit further on. In our example, the `close()` call happens after the last push has completed, and there are no more values to be pulled. This is signalled to the second go block by returning the value `undefined` on the next call to `pull()`.
 
@@ -83,7 +83,7 @@ core.go(function*() {
 });
 ```
 
-The function `run()` creates a channel with the specified buffer (or an unbuffered one if no argument was given) and runs first `readThings()` and then `writeThings()` on it, returning the (deferred) result of the latter. The final go block simply executed run with various buffers and prints out the results. The output looks something like this:
+The function `run()` creates a channel with the specified buffer (or an unbuffered one if no argument was given) and runs first `readThings()` and then `writeThings()` on it, returning the (deferred) result of the latter. The final go block simply executes `run` with various buffers and prints out the results. The output looks something like this:
 
 ```
 [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
@@ -91,6 +91,8 @@ The function `run()` creates a channel with the specified buffer (or an unbuffer
 [ 1, 2, 3, 4, 5, 20, 58, 62, 130, 221 ]
 [ 53, 167, 259, 423, 563, 761, 957, 1156, 1209, 1363 ]
 ```
+
+Ceci provides three types of buffer, all of fixed size, which differ only in how they handle a push operation when full. A `Buffer` will block the push until a slot becomes available due to a subsequent pull. A `DroppingBuffer` will accept the push, but drop the new value. A `SlidingBuffer` will accept the push and buffer the new value, but drop the oldest value it holds in order to make room.
 
 License
 -------
