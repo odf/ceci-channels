@@ -184,8 +184,8 @@ exports.select = function() {
       channel.requestPull(client);
     } else {
       channel = op[0];
-      client = makeClient(channel, result, client);
-      channel.requestPush(client, op[1]);
+      client = makeClient(channel, result, cleanup);
+      channel.requestPush(op[1], client);
     }
 
     active.push(client);
