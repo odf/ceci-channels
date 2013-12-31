@@ -92,6 +92,165 @@ The function `run()` creates a channel with the specified buffer (or an unbuffer
 
 Ceci provides three types of buffer, all of fixed size, which differ only in how they handle a push operation when full. A `Buffer` will block the push until a slot becomes available due to a subsequent pull. A `DroppingBuffer` will accept the push, but drop the new value. A `SlidingBuffer` will accept the push and buffer the new value, but drop the oldest value it holds in order to make room.
 
+In the next example, we simulate a simple worker pool. Let's first define a function that starts a worker on a channel of jobs and returns a fresh channel with that worker's output:
+
+```javascript
+var core = require('ceci-core');
+var cc   = require('ceci-channels');
+
+var startWorker = function(jobs, name) {
+  var results = cc.chan();
+
+  core.go(function*() {
+    var val;
+    while (undefined !== (val = yield cc.pull(jobs))) {
+      yield cc.sleep(Math.random() * 40);
+      yield cc.push(results, name + ' ' + val);
+    }
+  });
+
+  return results;
+};
+```
+
+While jobs are available, the worker pulls a new one from the channel, works on it for some time (simulated by the `sleep` call) and pushes the result onto its own output channel. Let's now create a channel with an infinite supply of jobs and a few workers to take care of them:
+
+```javascript
+var jobs = cc.chan();
+core.go(function*() {
+  for (var i = 1; ; ++i)
+    if (!(yield cc.push(jobs, i)))
+      break;
+});
+
+var a = startWorker(jobs, 'a');
+var b = startWorker(jobs, 'b');
+var c = startWorker(jobs, 'c');
+```
+
+How can we collect and display the results in the order the are produced? Channels in Ceci are first class objects that can be passed around and shared between go blocks, as demonstrated by the `jobs` channel. So one simple way would be for the workers to also write results to a common output channel. But we might not have ownership of the worker code, so instead we could write a function that merges the incoming results into a new channel:
+
+```javascript
+var merge = function() {
+  var inchs = Array.prototype.slice.call(arguments);
+  var outch = cc.chan();
+
+  inchs.forEach(function(ch) {
+    core.go(function*() {
+      var val;
+      while (undefined !== (val = yield cc.pull(ch)))
+        if (!(yield cc.push(outch, val)))
+          break;
+    });
+  });
+
+  return outch;
+};
+```
+
+We start to see a useful pattern emerge here that is taken further in upcoming Ceci components: functions take one or more channels as input and create a fresh channel (or sometimes several channels) for their output. This approach is highly composable and allows one to build an infinite variety of processing pipelines on top of the channel abstraction. Using the `merge`, we can now collect all worker outputs and print them:
+
+```javascript
+var outputs = merge(a, b, c);
+
+core.go(function*() {
+  for (var i = 0; i < 10; ++i)
+    console.log(yield cc.pull(outputs));
+  cc.close(jobs);
+});
+```
+
+Due to the randomisation, the output will be a little different every time. It looks something like this:
+
+```
+a 1
+c 3
+a 4
+b 2
+c 5
+a 6
+b 7
+b 10
+c 8
+a 9
+```
+
+An alternative to the merge approach is the `select()` function, which takes a number of channels as arguments and returns a result of the form `{ channel: ..., value: ... }`, where `channel` is the first channel it can pull from, and `value` is the associated value. We can use this in our example as follows:
+
+```javascript
+core.go(function*() {
+  for (var i = 0; i < 10; ++i)
+    console.log((yield cc.select(a, b, c)).value);
+  cc.close(jobs);
+});
+```
+
+One of the advantages of `select()` is that it also supports non-blocking channel operations by specifying a default value:
+
+```javascript
+core.go(function*() {
+  for (var i = 0; i < 10; ++i) {
+    yield cc.sleep(5);
+    console.log((yield cc.select(a, b, c, { default: '...' })).value);
+  }
+  cc.close(jobs);
+});
+```
+
+The output now looks more like this:
+
+```
+...
+b 2
+b 4
+...
+c 3
+a 1
+b 5
+c 6
+...
+...
+```
+
+As the following, somewhat contrived example shows, `select()` can handle push operations just as well as pulls:
+
+```javascript
+var d = cc.chan();
+
+core.go(function*() {
+  for (var i = 0; i < 10; ++i) {
+    yield cc.sleep(5);
+    var res = yield cc.select([d, 'x'], a, b, c, { default: '...' });
+    if (res.channel != d)
+      console.log(res.value);
+  }
+  cc.close(jobs);
+  cc.close(d);
+});
+
+core.go(function*() {
+  var count = 0;
+  while (undefined !== (yield cc.pull(d))) {
+    yield cc.sleep(20);
+    ++count;
+  }
+  console.log('pushed to d ' + count + ' times');
+});
+```
+
+This produces the following sort of output:
+
+```
+...
+b 2
+a 1
+c 3
+b 4
+c 6
+...
+pushed to d 3 times
+```
+
 License
 -------
 
