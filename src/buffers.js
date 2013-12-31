@@ -9,7 +9,7 @@ var pull = function() {
 
 
 var Buffer = exports.Buffer = function Buffer(size) {
-  this.buffer = new RingBuffer(size);
+  this.buffer = new RingBuffer(size || 1);
 };
 
 Buffer.prototype.canBlock = function() {
@@ -29,7 +29,7 @@ Buffer.prototype.pull = pull;
 
 
 var DroppingBuffer = exports.DroppingBuffer = function DroppingBuffer(size) {
-  this.buffer = new RingBuffer(size);
+  this.buffer = new RingBuffer(size || 1);
 };
 
 DroppingBuffer.prototype.canBlock = function() {
@@ -46,7 +46,7 @@ DroppingBuffer.prototype.pull = pull;
 
 
 var SlidingBuffer = exports.SlidingBuffer = function SlidingBuffer(size) {
-  this.buffer = new RingBuffer(size);
+  this.buffer = new RingBuffer(size || 1);
 };
 
 SlidingBuffer.prototype.canBlock = function() {
