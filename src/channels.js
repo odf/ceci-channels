@@ -127,53 +127,76 @@ exports.close = function(ch) {
 };
 
 
-var makeClient = function(i, channel, result, cleanup) {
+var isObject = function(x) {
+  return x != null && x.constructor === Object;
+};
+
+
+var randomShuffle = function(a) {
+  var i, k, t;
+  for (i = a.length; i > 1; --i) {
+    k = Math.floor(Math.random() * i);
+    t = a[k];
+    a[k] = a[i-1];
+    a[i-1] = t;
+  }
+};
+
+
+var makeClient = function(channel, result, cleanup) {
   return {
     resolve: function(val) {
       cleanup();
-      result.resolve({ index: i, value: val });
+      result.resolve({ channel: channel, value: val });
     },
     reject: function(err) {
       cleanup();
       result.reject(new Error(err));
     },
     cancel: function() {
-      channel.cancelRequest(this);
+      if (channel)
+        channel.cancelRequest(this);
     }
   };
 };
 
+
 exports.select = function() {
   var args    = Array.prototype.slice.call(arguments);
+  var options = isObject(args[args.length - 1]) ? args.pop() : {};
   var result  = cc.defer();
   var active  = [];
   var cleanup = function() {
     for (var i = 0; i < active.length; ++i)
       active[i].cancel();
   };
+  var i, op, channel, client;
 
-  var isPush, channel, value, client;
+  if (!options.priority)
+    randomShuffle(args);
 
-  for (var i = 0; i < args.length; ++i) {
-    isPush = Array.isArray(args[i]);
+  for (i = 0; i < args.length; ++i) {
+    op = args[i];
 
-    if (isPush) {
-      channel = args[i][0];
-      value   = args[i][1];
-    }
-    else
-      channel = args[i];
-
-    client = makeClient(i, channel, result, cleanup);
-    active.push(client);
-
-    if (isPush)
-      channel.requestPush(client, value);
-    else
+    if (!Array.isArray(op)) {
+      channel = op;
+      client = makeClient(channel, result, cleanup);
       channel.requestPull(client);
+    } else {
+      channel = op[0];
+      client = makeClient(channel, result, client);
+      channel.requestPush(client, op[1]);
+    }
+
+    active.push(client);
 
     if (result.isResolved())
       break;
+  }
+
+  if (options.hasOwnProperty('default') && !result.isResolved()) {
+    cleanup();
+    result.resolve({ channel: null, value: options['default'] });
   }
 
   return result;

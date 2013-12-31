@@ -25,7 +25,7 @@ var ms = parseInt(process.argv[2] || "5");
 var ch = infiniteRange(1);
 
 core.go(function*() {
-  var i, t, r;
+  var i, t, val;
 
   console.log('Taking the first 10 numbers:');
 
@@ -36,13 +36,8 @@ core.go(function*() {
   console.log('Taking further numbers for ' + ms + ' miliseconds:');
 
   t = cc.timeout(ms);
-  for (;;) {
-    r = yield cc.select(t, ch);
-    if (r.index == 0)
-      break;
-    else
-      console.log(r.value);
-  }
+  while (undefined !== (val = (yield cc.select(t, ch)).value))
+    console.log(val);
 
   console.log();
   console.log('Taking 10 more numbers:');
