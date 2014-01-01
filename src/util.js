@@ -40,32 +40,6 @@ exports.ticker = function(ms) {
 };
 
 
-var apply = exports.apply = function(fn, context, args) {
-  var result = cc.defer();
-
-  fn.apply(context, args.concat(function(err, val) {
-    if (err)
-      result.reject(new Error(err));
-    else
-      result.resolve(val);
-  }));
-
-  return result;
-};
-
-
-var call = exports.call = function(fn, context) {
-  var args = Array.prototype.slice.call(arguments, 2);
-  return apply(fn, context, args);
-};
-
-
-exports.bind = function(fn, context)
-{
-  return call.bind(null, fn, context);
-};
-
-
 exports.fromStream = function(stream, outch, keepOpen)
 {
   var ch = outch || channels.chan();
