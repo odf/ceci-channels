@@ -22,7 +22,7 @@ var channels = 'abc'.split('').map(function(name) {
   core.go(function*() {
     var val;
     while (undefined !== (val = yield cc.pull(numbers))) {
-      yield cc.sleep(Math.random() * 25);
+      yield core.sleep(Math.random() * 25);
       yield cc.push(ch, name + ' ' + val);
     }
   });
@@ -33,7 +33,7 @@ var channels = 'abc'.split('').map(function(name) {
 core.go(function*() {
   var args = channels.concat({ 'default': ' -- ' });
   for (var i = 0; i < 20; ++i) {
-    yield cc.sleep(5);
+    yield core.sleep(5);
     console.log((yield cc.select.apply(null, args)).value);
   }
   cc.close(numbers);

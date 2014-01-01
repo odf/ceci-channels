@@ -4,16 +4,6 @@ var cc       = require('ceci-core');
 var channels = require('./channels');
 
 
-exports.sleep = function(ms) {
-  var result = cc.defer();
-  var t = setTimeout(function() {
-    clearTimeout(t);
-    result.resolve();
-  }, ms);
-  return result;
-};
-
-
 exports.timeout = function(ms) {
   var ch = channels.chan();
   var t = setTimeout(function() {

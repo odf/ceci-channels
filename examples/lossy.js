@@ -16,7 +16,7 @@ var readThings = function(ch) {
     var a = [];
     var i;
     for (i = 0; i < 10; ++i) {
-      yield cc.sleep(1);
+      yield core.sleep(1);
       a.push(yield cc.pull(ch));
     }
     cc.close(ch);
