@@ -54,7 +54,7 @@ var readThings = function(ch) {
     var a = [];
     var i;
     for (i = 0; i < 10; ++i) {
-      yield cc.sleep(1);
+      yield core.sleep(1);
       a.push(yield cc.pull(ch));
     }
     cc.close(ch);
@@ -104,7 +104,7 @@ var startWorker = function(jobs, name) {
   core.go(function*() {
     var val;
     while (undefined !== (val = yield cc.pull(jobs))) {
-      yield cc.sleep(Math.random() * 40);
+      yield core.sleep(Math.random() * 40);
       yield cc.push(results, name + ' ' + val);
     }
   });
@@ -190,7 +190,7 @@ One of the advantages of `select()` is that it also supports non-blocking channe
 ```javascript
 core.go(function*() {
   for (var i = 0; i < 10; ++i) {
-    yield cc.sleep(5);
+    yield core.sleep(5);
     console.log((yield cc.select(a, b, c, { default: '...' })).value);
   }
   cc.close(jobs);
@@ -219,7 +219,7 @@ var d = cc.chan();
 
 core.go(function*() {
   for (var i = 0; i < 10; ++i) {
-    yield cc.sleep(5);
+    yield core.sleep(5);
     var res = yield cc.select([d, 'x'], a, b, c, { default: '...' });
     if (res.channel != d)
       console.log(res.value);
@@ -231,7 +231,7 @@ core.go(function*() {
 core.go(function*() {
   var count = 0;
   while (undefined !== (yield cc.pull(d))) {
-    yield cc.sleep(20);
+    yield core.sleep(20);
     ++count;
   }
   console.log('pushed to d ' + count + ' times');
