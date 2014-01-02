@@ -147,11 +147,13 @@ var makeClient = function(channel, result, cleanup) {
   return {
     resolve: function(val) {
       cleanup();
-      result.resolve({ channel: channel, value: val });
+      if (!result.isResolved())
+        result.resolve({ channel: channel, value: val });
     },
     reject: function(err) {
       cleanup();
-      result.reject(new Error(err));
+      if (!result.isResolved())
+        result.reject(new Error(err));
     },
     cancel: function() {
       if (channel)
