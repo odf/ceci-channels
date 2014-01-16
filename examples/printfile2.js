@@ -2,7 +2,7 @@
 
 var fs   = require('fs');
 var core = require('ceci-core');
-var cc   = require('../index');
+var cc   = require('ceci-channels');
 
 
 var content = function(path) {

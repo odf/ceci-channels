@@ -1,0 +1,9 @@
+{
+  "name": "ceci-channels-examples",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "ceci-channels": "odf/ceci-channels"
+  },
+  "engines": { "node": ">= 0.11.6" }
+}
