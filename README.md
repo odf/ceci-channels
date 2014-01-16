@@ -27,9 +27,9 @@ core.go(function*() {
 
 Unsurprisingly, this prints out the numbers 1 to 10, each on a line by itself.
 
-We first create a channel by calling the function `chan()`. We then run two go blocks, one that writes (pushes) values onto the channel, and another that reads (pulls) from it. The functions `push()` and `pull()` both return deferred values and are usually used in combination with a `yield`. In this example, the channel is unbuffered, which means that a push onto it will block until there is a corresponding pull and vice versa. A channel always produces values in the same order as they were written to it, so in effect, it acts as a blocking queue.
+We first create a channel by calling the function `chan`. We then run two go blocks, one that writes (pushes) values onto the channel, and another that reads (pulls) from it. The functions `push` and `pull` both return deferred values and are usually used in combination with a `yield`. In this example, the channel is unbuffered, which means that a push onto it will block until there is a corresponding pull and vice versa. A channel always produces values in the same order as they were written to it, so in effect, it acts as a blocking queue.
 
-The `close()` function closes a channel immediately, which means that all pending operations on it will be cancelled and no further data can be pushed. Pulls from a buffered channel are still possible until its buffer is exhausted. In our example, the channel is unbuffered, so there are no further values to be pulled. This is signalled to the second go block by returning the value `undefined` on the next call to `pull()`.
+The `close` function closes a channel immediately, which means that all pending operations on it will be cancelled and no further data can be pushed. Pulls from a buffered channel are still possible until its buffer is exhausted. In our example, the channel is unbuffered, so there are no further values to be pulled. This is signalled to the second go block by returning the value `undefined` on the next call to `pull`.
 
 Let's now investigate some buffering options for channels. We start by defining a function that writes numbers onto a provided channel:
 
@@ -46,7 +46,7 @@ var writeThings = function(ch) {
 };
 ```
 
-This looks quite similar to the code above, but this time, instead of pushing a fixed number of values, we use the eventual return value of the `push()` call to determine whether the output channel is still open. Here's the function that will consume the data:
+This looks quite similar to the code above, but this time, instead of pushing a fixed number of values, we use the eventual return value of the `push` call to determine whether the output channel is still open. Here's the function that will consume the data:
 
 ```javascript
 var readThings = function(ch) {
@@ -63,7 +63,7 @@ var readThings = function(ch) {
 };
 ```
 
-This function reads ten values from the provided channel and eventually returns an array with these values. But before each read, it pauses for a millisecond by calling the `sleep()` function. This means that data will be produced faster than it can be consumed. Let's see how this plays out with different kinds of buffering:
+This function reads ten values from the provided channel and eventually returns an array with these values. But before each read, it pauses for a millisecond by calling the `sleep` function. This means that data will be produced faster than it can be consumed. Let's see how this plays out with different kinds of buffering:
 
 ```javascript
 var run = function(buffer) {
@@ -81,7 +81,7 @@ core.go(function*() {
 });
 ```
 
-The function `run()` creates a channel with the specified buffer (or an unbuffered one if no argument was given) and runs first `readThings()` and then `writeThings()` on it, returning the (deferred) result of the latter. The final go block simply executes `run` with various buffers and prints out the results. The output looks something like this:
+The function `run` creates a channel with the specified buffer (or an unbuffered one if no argument was given) and runs first `readThings` and then `writeThings` on it, returning the (deferred) result of the latter. The final go block simply executes `run` with various buffers and prints out the results. The output looks something like this:
 
 ```
 [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
@@ -148,7 +148,7 @@ var merge = function() {
 };
 ```
 
-We start to see a useful pattern emerge here that is taken further in upcoming Ceci components: functions take one or more channels as input and create a fresh channel (or sometimes several channels) for their output. This approach is highly composable and allows one to build an infinite variety of processing pipelines on top of the channel abstraction. Using the `merge`, we can now collect all worker outputs and print them:
+We start to see a useful pattern emerge here that is taken further in ceci-filters: functions take one or more channels as input and create a fresh channel (or sometimes several channels) for their output. This approach is highly composable and allows one to build an infinite variety of processing pipelines on top of the channel abstraction. Using `merge`, we can now collect all worker outputs and print them:
 
 ```javascript
 var outputs = merge(a, b, c);
@@ -175,7 +175,7 @@ c 8
 a 9
 ```
 
-An alternative to the merge approach is the `select()` function, which takes a number of channels as arguments and returns a result of the form `{ channel: ..., value: ... }`, where `channel` is the first channel it can pull from, and `value` is the associated value. We can use this in our example as follows:
+An alternative to the merge approach is the `select` function, which takes a number of channels as arguments and returns a result of the form `{ channel: ..., value: ... }`, where `channel` is the first channel it can pull from, and `value` is the associated value. We can use this in our example as follows:
 
 ```javascript
 core.go(function*() {
@@ -185,34 +185,7 @@ core.go(function*() {
 });
 ```
 
-One of the advantages of `select()` is that it also supports non-blocking channel operations by specifying a default value:
-
-```javascript
-core.go(function*() {
-  for (var i = 0; i < 10; ++i) {
-    yield core.sleep(5);
-    console.log((yield cc.select(a, b, c, { default: '...' })).value);
-  }
-  cc.close(jobs);
-});
-```
-
-The output now looks more like this:
-
-```
-...
-b 2
-b 4
-...
-c 3
-a 1
-b 5
-c 6
-...
-...
-```
-
-As the following, somewhat contrived example shows, `select()` can handle push operations just as well as pulls:
+One of the advantages of `select` is that it also supports non-blocking channel operations by specifying a default value. Furthermore, it can handle pushes just as well as pulls. The following, somewhat contrived example shows all the capabilities of `select` in action:
 
 ```javascript
 var d = cc.chan();
