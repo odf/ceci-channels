@@ -227,6 +227,6 @@ pushed to d 3 times
 License
 -------
 
-Copyright (c) 2013 Olaf Delgado-Friedrichs.
+Copyright (c) 2014 Olaf Delgado-Friedrichs.
 
 Distributed under the MIT license.
