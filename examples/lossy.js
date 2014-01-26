@@ -3,11 +3,9 @@
 var core = require('ceci-core');
 var cc   = require('ceci-channels');
 
-var source = function(start) {
-  return function*() {
-    for (var i = 1; ; ++i)
-      yield(i);
-  };
+var source = function*(start) {
+  for (var i = 1; ; ++i)
+    yield(i);
 };
 
 var writeThings = function(ch) {
