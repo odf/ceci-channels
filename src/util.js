@@ -30,26 +30,62 @@ exports.ticker = function(ms) {
 };
 
 
-exports.fromStream = function(stream, outch, keepOpen)
+exports.each = function(fn, input) {
+  return cc.go(function*() {
+    var val;
+    while (undefined !== (val = yield channels.pull(input)))
+      if (fn)
+        yield fn(val);
+  });
+};
+
+
+exports.fromGenerator = function(gen, output) {
+  var managed = output == null;
+  if (managed)
+    output = channels.chan();
+
+  cc.go(function*() {
+    var step;
+
+    while (true) {
+      step = gen.next();
+      if (step.done)
+        break;
+      if (!(yield channels.push(output, step.value)))
+        break
+    }
+
+    if (managed)
+      channels.close(output);
+  });
+
+  return output;
+};
+
+
+exports.fromStream = function(stream, output)
 {
-  var ch = outch || channels.chan();
+  var managed = output == null;
+  if (managed)
+    output = channels.chan();
 
   stream.on('readable', function() {
     cc.go(function*() {
       var chunk;
       while (null !== (chunk = stream.read()))
-        yield channels.push(ch, chunk);
+        yield channels.push(output, chunk);
     });
   });
 
   stream.on('end', function() {
-    if (!keepOpen)
-      cc.go(function*() { channels.close(ch); });
+    if (managed)
+      cc.go(function*() { channels.close(output); });
   });
 
   stream.on('error', function(err) {
     throw new Error(err);
   });
 
-  return ch;
+  return output;
 };

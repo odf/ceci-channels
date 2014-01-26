@@ -10,11 +10,11 @@ var mc = cc.multicast(source);
 var chatter = function(i) {
   var ch = cc.chan();
 
-  core.go(function*() {
-    var val;
-    while (undefined !== (val = yield cc.pull(ch)))
+  cc.each(
+    function(val) {
       console.log('' + i + ': ' + val);
-  });
+    },
+    ch);
 
   return ch;
 };

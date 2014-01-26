@@ -8,16 +8,12 @@ var quote = function(s) {
 };
 
 core.go(function*() {
-  var ch, text;
-
   process.stdin.setEncoding('utf8');
-  ch = cc.fromStream(process.stdin);
 
-  for (;;) {
-    text = yield cc.pull(ch);
-    if (text === undefined)
-      break;
-    else
+  cc.each(
+    function(text) {
       console.log(quote(text));
-  }
+    },
+    cc.fromStream(process.stdin)
+  );
 });

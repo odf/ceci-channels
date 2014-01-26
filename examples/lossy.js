@@ -3,12 +3,15 @@
 var core = require('ceci-core');
 var cc   = require('ceci-channels');
 
-var writeThings = function(ch) {
-  core.go(function*() {
+var source = function(start) {
+  return function*() {
     for (var i = 1; ; ++i)
-      if (!(yield cc.push(ch, i)))
-        break;
-  });
+      yield(i);
+  };
+};
+
+var writeThings = function(ch) {
+  cc.fromGenerator(source(1), ch);
 };
 
 var readThings = function(ch) {
