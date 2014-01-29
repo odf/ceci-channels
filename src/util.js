@@ -66,6 +66,11 @@ exports.fromGenerator = function(gen, output) {
 
 exports.fromStream = function(stream, output)
 {
+  var busy = null;
+  var wait = function(ch) {
+    return (ch == null) ? null : channels.pull(ch);
+  };
+
   var managed = output == null;
   if (managed)
     output = channels.chan();
@@ -73,14 +78,23 @@ exports.fromStream = function(stream, output)
   stream.on('readable', function() {
     cc.go(function*() {
       var chunk;
+
+      yield wait(busy);
+      busy = channels.chan();
+
       while (null !== (chunk = stream.read()))
         yield channels.push(output, chunk);
+
+      channels.close(busy);
     });
   });
 
   stream.on('end', function() {
     if (managed)
-      cc.go(function*() { channels.close(output); });
+      cc.go(function*() {
+        yield wait(busy);
+        channels.close(output);
+      });
   });
 
   stream.on('error', function(err) {
