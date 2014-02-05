@@ -1,5 +1,6 @@
 var core = require('ceci-core');
 var cc   = require('ceci-channels');
+var cb   = require('ceci-buffers');
 
 var writeThings = function(ch) {
   core.go(function*() {
@@ -31,7 +32,7 @@ var run = function(buffer) {
 
 core.go(function*() {
   console.log(yield run());
-  console.log(yield run(new cc.Buffer(5)));
-  console.log(yield run(new cc.DroppingBuffer(5)));
-  console.log(yield run(new cc.SlidingBuffer(5)));
+  console.log(yield run(new cb.Buffer(5)));
+  console.log(yield run(new cb.DroppingBuffer(5)));
+  console.log(yield run(new cb.SlidingBuffer(5)));
 });

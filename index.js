@@ -8,5 +8,4 @@ var extend = function(obj, other) {
 
 extend(exports, require('./src/channels'));
 extend(exports, require('./src/multicast'));
-extend(exports, require('./src/buffers'));
 extend(exports, require('./src/util'));
