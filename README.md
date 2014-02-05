@@ -85,11 +85,13 @@ var run = function(buffer) {
   return readThings(ch);
 };
 
+var cb = require('ceci-buffers');
+
 core.go(function*() {
   console.log(yield run());
-  console.log(yield run(new cc.Buffer(5)));
-  console.log(yield run(new cc.DroppingBuffer(5)));
-  console.log(yield run(new cc.SlidingBuffer(5)));
+  console.log(yield run(new cb.Buffer(5)));
+  console.log(yield run(new cb.DroppingBuffer(5)));
+  console.log(yield run(new cb.SlidingBuffer(5)));
 });
 ```
 
