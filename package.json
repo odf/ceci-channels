@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "main": "./index.js",
   "dependencies": {
-    "ceci-buffers": "odf/ceci-buffers",
+    "ceci-buffers": "~0.1.0",
     "ceci-core": "odf/ceci-core"
   }
 }
