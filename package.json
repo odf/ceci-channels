@@ -4,6 +4,6 @@
   "main": "./index.js",
   "dependencies": {
     "ceci-buffers": "~0.1.0",
-    "ceci-core": "odf/ceci-core"
+    "ceci-core": "~0.1.0"
   }
 }
