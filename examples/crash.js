@@ -9,4 +9,4 @@ var cc   = require('ceci-channels');
 
 core.go(function*() {
   yield cc.push(cc.chan());
-});
+}).then(null, function(ex) { console.log(ex.stack); });
