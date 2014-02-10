@@ -2,7 +2,7 @@
 
 var core = require('ceci-core');
 var cb   = require('ceci-buffers');
-var cc   = require('ceci-channels');
+var cc   = require('../index');
 
 var source = function*(start) {
   for (var i = 1; ; ++i)

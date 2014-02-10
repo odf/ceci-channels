@@ -1,5 +1,5 @@
 var core = require('ceci-core');
-var cc   = require('ceci-channels');
+var cc   = require('../index');
 var cb   = require('ceci-buffers');
 
 var writeThings = function(ch) {

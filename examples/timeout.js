@@ -1,7 +1,7 @@
 'use strict';
 
 var core = require('ceci-core');
-var cc   = require('ceci-channels');
+var cc   = require('../index');
 
 
 var infiniteRange = function(start) {

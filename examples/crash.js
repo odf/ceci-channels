@@ -1,7 +1,7 @@
 'use strict';
 
 var core = require('ceci-core');
-var cc   = require('ceci-channels');
+var cc   = require('../index');
 
 
 // This go block will throw an exception, because push requires a value other
