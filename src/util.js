@@ -64,12 +64,29 @@ exports.fromGenerator = function(gen, output) {
 };
 
 
+function Lock() {
+  this.busy = channels.chan();
+  this.release();
+};
+
+Lock.prototype = {
+  acquire: function() {
+    return channels.pull(this.busy);
+  },
+  release: function() {
+    channels.push(this.busy, null);
+  }
+};
+
+
+exports.createLock = function() {
+  return new Lock();
+};
+
+
 exports.fromStream = function(stream, output)
 {
-  var busy = null;
-  var wait = function(ch) {
-    return (ch == null) ? null : channels.pull(ch);
-  };
+  var lock = exports.createLock();
 
   var managed = output == null;
   if (managed)
@@ -79,20 +96,20 @@ exports.fromStream = function(stream, output)
     cc.go(function*() {
       var chunk;
 
-      yield wait(busy);
-      busy = channels.chan();
+      yield lock.acquire();
 
       while (null !== (chunk = stream.read()))
-        yield channels.push(output, chunk);
+        if (!(yield channels.push(output, chunk)))
+            return;
 
-      channels.close(busy);
+      lock.release();
     });
   });
 
   stream.on('end', function() {
     if (managed)
       cc.go(function*() {
-        yield wait(busy);
+        yield lock.acquire();
         channels.close(output);
       });
   });
