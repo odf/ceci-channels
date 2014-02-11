@@ -84,7 +84,7 @@ exports.createLock = function() {
 };
 
 
-exports.fromStream = function(stream, output)
+exports.fromStream = function(stream, output, onOutputClosed)
 {
   var lock = exports.createLock();
 
@@ -99,8 +99,11 @@ exports.fromStream = function(stream, output)
       yield lock.acquire();
 
       while (null !== (chunk = stream.read()))
-        if (!(yield channels.push(output, chunk)))
-            return;
+        if (!(yield channels.push(output, chunk))) {
+          if (onOutputClosed)
+            onOutputClosed();
+          return;
+        }
 
       lock.release();
     });
