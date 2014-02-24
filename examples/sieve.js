@@ -3,7 +3,7 @@
 'use strict';
 
 var core = require('ceci-core');
-var cc   = require("../index");
+var cc   = require("../lib/index");
 
 
 var infiniteRange = function(start) {

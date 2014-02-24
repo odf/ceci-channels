@@ -2,7 +2,7 @@
 
 var fs   = require('fs');
 var core = require('ceci-core');
-var cc   = require('../index');
+var cc   = require('../lib/index');
 
 
 var content = function(path) {
