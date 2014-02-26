@@ -3,17 +3,6 @@
 var G = require('./generative');
 
 
-beforeEach(function() {
-  this.addMatchers({
-    toSucceed: function() {
-      var cause = this.actual.cause;
-      this.message = function() { return cause; };
-      return this.actual.successful;
-    }
-  });
-});
-
-
 describe('a simple predicate testing for positivity', function() {
   var pred = function(n) {
     return (n > 0) ? G.success() : G.failure('must be positive');
