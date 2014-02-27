@@ -159,3 +159,12 @@ var verify = function(system, log) {
 
   return { successful: true };
 };
+
+
+Generative.checkSystem = function(model, system, N) {
+  var predicate = function(log) { return verify(system, log); };
+  var generator = function(i)   { return session(model, i); };
+  var shrinker  = function(log) { return shrinkSession(model, log); };
+
+  return Generative.check(predicate, generator, shrinker, N);
+};
