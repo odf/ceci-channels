@@ -23,3 +23,33 @@ describe('a simple predicate testing for positivity', function() {
     });
   });
 });
+
+
+describe('a stack', function() {
+  var stack = {
+    _data: [],
+
+    push: function(x) {
+      return this._data.push(x);
+    },
+
+    pop: function() {
+      if (this._data.length == 0)
+        throw new Error('stack is empty');
+      else
+        return this._data.pop();
+    },
+    
+    empty: function() {
+      return this._data.length == 0;
+    },
+
+    reset: function() {
+      this._data = [];
+    },
+
+    apply: function(command, args) {
+      return this[command].apply(this, args);
+    }
+  };
+});
