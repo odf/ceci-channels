@@ -69,18 +69,83 @@ Generative.check = function(predicate, generator, shrinker, N) {
 };
 
 
-Generative.session = function(model, size) {
+var merge = function(obj1, obj2) {
+  var result = (Array.isArray(obj1) && Array.isArray(obj2)) ? [] : {};
+  var key;
+  for (key in obj1)
+    result[key] = obj1[key];
+  for (key in obj2)
+    result[key] = obj2[key];
+  return result;
+};
+
+
+var simulate = function(model, session) {
+  var state = model.initial();
+  var log = [];
+  var i, result;
+
+  for (i = 0; i < session.length; ++i) {
+    result = model.apply(state, session[j].command, session[j].args);
+    state  = result.state;
+    log.append(merge(session[j], result));
+  }
+
+  return log;
+};
+
+
+var session = function(model, size) {
   var G = Generative;
   var n = G.randomInt(1, size+1);
-  var state = model.initial();
-  var result, i, command, args, newstate;
+  var session = [];
+  var i, command;
 
   for (i = 0; i < n; ++i) {
     command = G.oneOf(model.commands(state));
-    args = command.randomArgs(state, size);
-    newState = command.apply(state, args);
-    result.append({ command: command.name, args: args, newState: newState });
+    session.append({
+      command: command,
+      args   : model.randomArgs(state, command, size)
+    });
   }
 
-  //...
+  return simulate(model, session);
+};
+
+
+var shrinkSession = function(model, log) {
+  var result = []
+  var i, shrunk;
+
+  for (i = 0; i < log.length; ++i) {
+    shrunk = log.slice();
+    shrunk.splice(i, 1);
+    result.append(simulate(model, shrunk));
+  }
+
+  return result;
+};
+
+
+var verify = function(system, log) {
+  var i, result;
+
+  system.initialise();
+  for (i = 0; i < log.length; ++i) {
+    result = system.apply(log[i].command, log[i].args);
+    if (result.thrown != log[i].thrown)
+      return {
+        successful: false,
+        cause: ('step ' + i + ' should throw ' + log[i].thrown +
+                ', got ' + result.thrown)
+      };
+    else if (result.output != log[i].output)
+      return {
+        successful: false,
+        cause: ('step ' + i + ' should return ' + log[i].output +
+                ', got ' + result.output)
+      };
+  }
+
+  return { successful: true };
 };
