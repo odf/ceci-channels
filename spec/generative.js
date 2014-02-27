@@ -11,6 +11,10 @@ Generative.randomInt = function(min, max) {
   return min + Math.floor(Math.random() * (max - min));
 };
 
+Generative.oneOf = function(list) {
+  return list[Generative.randomInt(0, list.length)];
+};
+
 Generative.success = function(cause) {
   return { successful: true, cause: cause };
 };
@@ -62,4 +66,21 @@ Generative.check = function(predicate, generator, shrinker, N) {
   }
 
   return Generative.success();
+};
+
+
+Generative.session = function(model, size) {
+  var G = Generative;
+  var n = G.randomInt(1, size+1);
+  var state = model.initial();
+  var result, i, command, args, newstate;
+
+  for (i = 0; i < n; ++i) {
+    command = G.oneOf(model.commands(state));
+    args = command.randomArgs(state, size);
+    newState = command.apply(state, args);
+    result.append({ command: command.name, args: args, newState: newState });
+  }
+
+  //...
 };
