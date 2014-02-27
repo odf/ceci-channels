@@ -25,6 +25,8 @@ var shrink = function(predicate, candidate, shrinker) {
   var done = false;
   var shrunk, i;
 
+  shrinker = shrinker || function() { return []; } 
+
   while (!done) {
     shrunk = shrinker(smallest);
     done = true;

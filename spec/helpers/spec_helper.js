@@ -1,11 +1,13 @@
 'use strict';
 
+var G = require('../generative');
+
 
 var customMatchers = {
-  toSucceed: function() {
-    var cause = this.actual.cause;
-    this.message = function() { return cause; };
-    return this.actual.successful;
+  toSucceedOn: function(generator, shrinker) {
+    var result = G.checkPredicate(this.actual, generator, shrinker);
+    this.message = function() { return result.cause; };
+    return result.successful;
   }
 };
 
