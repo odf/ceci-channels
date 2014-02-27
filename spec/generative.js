@@ -88,7 +88,11 @@ var simulate = function(model, session) {
   for (i = 0; i < session.length; ++i) {
     result = model.apply(state, session[j].command, session[j].args);
     state  = result.state;
-    log.append(merge(session[j], result));
+    log.append(merge(session[j], {
+      state : result.state,
+      output: result.output,
+      thrown: result.thrown
+    }));
   }
 
   return log;
@@ -128,22 +132,28 @@ var shrinkSession = function(model, log) {
 
 
 var verify = function(system, log) {
-  var i, result;
+  var i, output, thrown;
 
-  system.initialise();
+  system.reset();
+
   for (i = 0; i < log.length; ++i) {
-    result = system.apply(log[i].command, log[i].args);
-    if (result.thrown != log[i].thrown)
+    try {
+      output = system.apply(log[i].command, log[i].args);
+    } catch(ex) {
+      thrown = ex;
+    }
+
+    if (thrown != log[i].thrown)
       return {
         successful: false,
         cause: ('step ' + i + ' should throw ' + log[i].thrown +
-                ', got ' + result.thrown)
+                ', got ' + thrown)
       };
-    else if (result.output != log[i].output)
+    else if (output != log[i].output)
       return {
         successful: false,
         cause: ('step ' + i + ' should return ' + log[i].output +
-                ', got ' + result.output)
+                ', got ' + output)
       };
   }
 
