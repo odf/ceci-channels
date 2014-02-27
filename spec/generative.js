@@ -161,7 +161,7 @@ var verify = function(system, log) {
 };
 
 
-Generative.checkSystem = function(model, system, N) {
+Generative.checkSystem = function(system, model, N) {
   var predicate = function(log) { return verify(system, log); };
   var generator = function(i)   { return session(model, i); };
   var shrinker  = function(log) { return shrinkSession(model, log); };
