@@ -44,7 +44,7 @@ var shrink = function(predicate, candidate, shrinker) {
 };
 
 
-Generative.checkPredicate = function(predicate, generator, shrinker, N) {
+Generative.check = function(predicate, generator, shrinker, N) {
   var i, candidate, smallest;
 
   N = N || 100;
