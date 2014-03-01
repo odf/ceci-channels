@@ -36,7 +36,7 @@ var shrink = function(predicate, candidate, shrinker) {
     done = true;
 
     for (i in shrunk) {
-      if (!predicate(shrunk[i])) {
+      if (!predicate(shrunk[i]).successful) {
         smallest = shrunk[i];
         done = false;
         break;
@@ -49,7 +49,7 @@ var shrink = function(predicate, candidate, shrinker) {
 
 
 var show = function(thing) {
-  return JSON.stringify(thing, null, 4);
+  return JSON.stringify(thing);
 };
 
 
