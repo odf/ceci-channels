@@ -48,6 +48,11 @@ var shrink = function(predicate, candidate, shrinker) {
 };
 
 
+var show = function(thing) {
+  return JSON.stringify(thing, null, 4);
+};
+
+
 Generative.check = function(predicate, generator, shrinker, N) {
   var i, candidate, smallest;
 
@@ -60,8 +65,8 @@ Generative.check = function(predicate, generator, shrinker, N) {
       smallest = shrink(predicate, candidate, shrinker);
       return Generative.failure('\n' +
                                 'Reason: ' + predicate(smallest).cause + '\n' +
-                                '     in ' + smallest + '\n' +
-                                '  (from ' + candidate + ')');
+                                '     in ' + show(smallest) + '\n' +
+                                '  (from ' + show(candidate) + ')');
     }
   }
 
@@ -86,9 +91,9 @@ var simulate = function(model, session) {
   var i, result;
 
   for (i = 0; i < session.length; ++i) {
-    result = model.apply(state, session[j].command, session[j].args);
+    result = model.apply(state, session[i].command, session[i].args);
     state  = result.state;
-    log.append(merge(session[j], {
+    log.push(merge(session[i], {
       state : result.state,
       output: result.output,
       thrown: result.thrown
@@ -106,10 +111,10 @@ var session = function(model, size) {
   var i, command;
 
   for (i = 0; i < n; ++i) {
-    command = G.oneOf(model.commands(state));
-    session.append({
+    command = G.oneOf(model.commands());
+    session.push({
       command: command,
-      args   : model.randomArgs(state, command, size)
+      args   : model.randomArgs(command, size)
     });
   }
 
@@ -124,7 +129,7 @@ var shrinkSession = function(model, log) {
   for (i = 0; i < log.length; ++i) {
     shrunk = log.slice();
     shrunk.splice(i, 1);
-    result.append(simulate(model, shrunk));
+    result.push(simulate(model, shrunk));
   }
 
   return result;
@@ -137,10 +142,11 @@ var verify = function(system, log) {
   system.reset();
 
   for (i = 0; i < log.length; ++i) {
+    output = thrown = undefined;
     try {
       output = system.apply(log[i].command, log[i].args);
     } catch(ex) {
-      thrown = ex;
+      thrown = ex.message;
     }
 
     if (thrown != log[i].thrown)

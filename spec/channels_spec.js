@@ -30,7 +30,7 @@ describe('a stack', function() {
     _data: [],
 
     push: function(x) {
-      return this._data.push(x);
+      this._data.push(x);
     },
 
     pop: function() {
@@ -52,4 +52,52 @@ describe('a stack', function() {
       return this[command].apply(this, args);
     }
   };
+
+  describe('described by an appropriate model', function() {
+    var model = {
+      commands: function() {
+        return ['push', 'pop', 'empty'];
+      },
+
+      randomArgs: function(command, size) {
+        if (command == 'push')
+          return [G.randomInt(0, size)];
+        else
+          return [];
+      },
+
+      initial: function() {
+        return [];
+      },
+
+      apply: function(state, command, args) {
+        switch(command) {
+        case 'push':
+          return {
+            state: state.concat(args[0])
+          }
+        case 'pop':
+          if (state.length == 0)
+            return {
+              state : state,
+              thrown: new Error('stack is empty').message
+            }
+          else
+            return {
+              state : state.slice(0, state.length-1),
+              output: state[state.length-1]
+            }
+        case 'empty':
+          return {
+            state : state,
+            output: state.length == 0
+          }
+        }
+      }
+    };
+
+    it('passes the conformity test', function() {
+      expect(stack).toConformTo(model);
+    });
+  });
 });
