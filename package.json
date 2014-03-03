@@ -26,7 +26,8 @@
   },
   "dependencies": {
     "ceci-buffers": "~0.1.0",
-    "ceci-core": "~0.2.0"
+    "ceci-core": "~0.2.0",
+    "comfychair": "~0.0.1"
   },
   "devDependencies": {
     "regenerator": "~0.3.9",
