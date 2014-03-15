@@ -9,7 +9,10 @@ all:		channels_spec.jso
 		mkdir -p $(BUILD) && \
 		cp $^ $(BUILD) && \
 		cd $(BUILD) && \
-		rename -f 's/\.jso/\.js/' *.jso
+		for file in *.jso; \
+		do \
+		  mv $$file `sed 's/\.jso/\.js/' <<<$$file`; \
+		done
 
 clean:
 		rm -f *.jso
