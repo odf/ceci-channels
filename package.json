@@ -1,6 +1,6 @@
 {
   "name": "ceci-channels",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Blocking message channels for the Ceci library",
   "keywords": [
     "async",
@@ -19,7 +19,7 @@
     "name": "Olaf Delgado-Friedrichs",
     "email": "olaf.delgado@gmail.com"
   },
-  "files": "./lib",
+  "files": [ "lib", "src", "spec", "es6.js" ],
   "main": "./lib/index.js",
   "repository": {
     "type": "git",
