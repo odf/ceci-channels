@@ -11,7 +11,7 @@ all:		channels_spec.jso
 		cd $(BUILD) && \
 		for file in *.jso; \
 		do \
-		  mv $$file `sed 's/\.jso/\.js/' <<<$$file`; \
+		  mv $$file `echo $$file | sed 's/\.jso/\.js/'`; \
 		done
 
 clean:
