@@ -179,6 +179,8 @@ exports.select = function() {
 
   for (i = 0; i < args.length; ++i) {
     op = args[i];
+    if (op == null)
+      continue;
 
     if (!Array.isArray(op)) {
       channel = op;
