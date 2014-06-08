@@ -1,15 +1,35 @@
 'use strict';
 
-var cc     = require('ceci-core');
-var Buffer = require('ceci-buffers').Buffer;
+var cc = require('ceci-core');
+var cb = require('ceci-buffers');
 
 
 function Channel(buffer) {
   this.buffer   = buffer;
-  this.pending  = [];
-  this.data     = [];
+  this.pending  = new cb.impl.RingBuffer(1);
+  this.data     = new cb.impl.RingBuffer(1);
   this.pressure = 0;
   this.isClosed = false;
+};
+
+var MAX_PENDING = 8192;
+
+Channel.prototype.addPending = function(client, val) {
+  if (this.pending.isFull()) {
+    if (this.pending.capacity >= MAX_PENDING)
+      return false;
+    this.pending.resize(
+      Math.min(MAX_PENDING, Math.ceil(this.pending.capacity() * 1.5)));
+  }
+  this.pending.write(client);
+
+  if (val !== undefined) {
+    if (this.data.isFull())
+      this.data.resize(Math.ceil(this.data.capacity() * 1.5));
+    this.data.write(val);
+  }
+
+  return true;
 };
 
 Channel.prototype.pushBuffer = function(val) {
@@ -22,13 +42,18 @@ Channel.prototype.pullBuffer = function() {
 };
 
 Channel.prototype.tryPush = function(val) {
-  if (this.pressure < 0) {
-    var client = this.pending.shift();
-    client.resolve(this.pushBuffer(val) ? this.pullBuffer() : val);
+  var client;
+
+  while (this.pressure < 0) {
+    client = this.pending.read();
     ++this.pressure;
-    return true;
-  } else
-    return this.pushBuffer(val);
+    if (!client.isResolved()) {
+      client.resolve(this.pushBuffer(val) ? this.pullBuffer() : val);
+      return true;
+    }
+  }
+
+  return this.pushBuffer(val);
 };
 
 Channel.prototype.requestPush = function(val, client) {
@@ -38,27 +63,32 @@ Channel.prototype.requestPush = function(val, client) {
     client.resolve(false);
   else if (this.tryPush(val))
     client.resolve(true);
-  else {
-    this.pending.push(client);
-    this.data.push(val);
+  else if (!this.addPending(client, val))
+    client.reject(new Error("channel queue overflow"));
+  else
     ++this.pressure;
-  }
 };
 
 Channel.prototype.tryPull = function() {
-  if (this.pressure > 0) {
-    var client = this.pending.shift();
-    var val    = this.data.shift();
-    var pulled = this.pullBuffer();
-    if (pulled !== undefined) {
-      this.pushBuffer(val);
-      val = pulled;
-    }
-    client.resolve(true);
+  var client, val, pulled;
+
+  while (this.pressure > 0) {
+    client = this.pending.read();
+    val    = this.data.read();
     --this.pressure;
-    return val;
-  } else
-    return this.pullBuffer();
+
+    if (!client.isResolved()) {
+      pulled = this.pullBuffer();
+      if (pulled !== undefined) {
+        this.pushBuffer(val);
+        val = pulled;
+      }
+      client.resolve(true);
+      return val;
+    }
+  }
+
+  return this.pullBuffer();
 };
 
 Channel.prototype.requestPull = function(client) {
@@ -67,35 +97,23 @@ Channel.prototype.requestPull = function(client) {
     client.resolve(res);
   else if (this.isClosed)
     client.resolve();
-  else {
-    this.pending.push(client);
+  else if (!this.addPending(client))
+    client.reject(new Error("channel queue overflow"));
+  else
     --this.pressure;
-  }
-};
-
-Channel.prototype.cancelRequest = function(client) {
-  for (var i = 0; i < this.pending.length; ++i) {
-    if (this.pending[i] === client) {
-      this.pending.splice(i, 1);
-      if (this.pressure > 0) {
-        this.data.splice(i, 1);
-        --this.pressure;
-      } else
-        ++this.pressure;
-      break;
-    }
-  }
 };
 
 Channel.prototype.close = function() {
   var val = this.pressure < 0 ? undefined : false;
+  var client;
 
-  this.pending.forEach(function(client) {
+  while (!this.pending.isEmpty()) {
+    client = this.pending.read();
     client.resolve(val);
-  });
+  }
 
-  this.pending = [];
-  this.data = [];
+  this.pending = null;
+  this.data = null;
   this.pressure = 0;
   this.isClosed = true;
 };
@@ -106,7 +124,7 @@ exports.chan = function(arg) {
   if (typeof arg == "object")
     buffer = arg;
   else if (arg)
-    buffer = new Buffer(arg);
+    buffer = new cb.Buffer(arg);
   return new Channel(buffer);
 };
 
@@ -144,6 +162,8 @@ var randomShuffle = function(a) {
 
 
 var makeClient = function(channel, result, cleanup) {
+  var resolved = false;
+
   return {
     resolve: function(val) {
       cleanup();
@@ -156,8 +176,10 @@ var makeClient = function(channel, result, cleanup) {
         result.reject(new Error(err));
     },
     cancel: function() {
-      if (channel)
-        channel.cancelRequest(this);
+      resolved = true;
+    },
+    isResolved: function() {
+      return resolved;
     }
   };
 };
