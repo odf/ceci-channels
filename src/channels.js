@@ -16,7 +16,7 @@ var MAX_PENDING = 8192;
 
 Channel.prototype.addPending = function(client, val) {
   if (this.pending.isFull()) {
-    if (this.pending.capacity >= MAX_PENDING)
+    if (this.pending.capacity() >= MAX_PENDING)
       return false;
     this.pending.resize(
       Math.min(MAX_PENDING, Math.ceil(this.pending.capacity() * 1.5)));
@@ -107,7 +107,7 @@ Channel.prototype.close = function() {
   var val = this.pressure < 0 ? undefined : false;
   var client;
 
-  while (!this.pending.isEmpty()) {
+  while (this.pending && !this.pending.isEmpty()) {
     client = this.pending.read();
     client.resolve(val);
   }
