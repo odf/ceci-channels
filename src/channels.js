@@ -57,6 +57,9 @@ Channel.prototype.tryPush = function(val) {
 };
 
 Channel.prototype.requestPush = function(val, client) {
+  if (client.isResolved())
+    return;
+
   if (val === undefined)
     client.reject(new Error("push() requires an value"));
   else if (this.isClosed)
@@ -92,6 +95,9 @@ Channel.prototype.tryPull = function() {
 };
 
 Channel.prototype.requestPull = function(client) {
+  if (client.isResolved())
+    return;
+
   var res = this.tryPull();
   if (res !== undefined)
     client.resolve(res);
@@ -109,7 +115,8 @@ Channel.prototype.close = function() {
 
   while (this.pending && !this.pending.isEmpty()) {
     client = this.pending.read();
-    client.resolve(val);
+    if (!client.isResolved())
+      client.resolve(val);
   }
 
   this.pending = null;
@@ -161,25 +168,16 @@ var randomShuffle = function(a) {
 };
 
 
-var makeClient = function(channel, result, cleanup) {
-  var resolved = false;
-
+var delegate = function(channel, result) {
   return {
     resolve: function(val) {
-      cleanup();
-      if (!result.isResolved())
-        result.resolve({ channel: channel, value: val });
+      result.resolve({ channel: channel, value: val });
     },
     reject: function(err) {
-      cleanup();
-      if (!result.isResolved())
-        result.reject(new Error(err));
-    },
-    cancel: function() {
-      resolved = true;
+      result.reject(err);
     },
     isResolved: function() {
-      return resolved;
+      return result.isResolved();
     }
   };
 };
@@ -189,12 +187,7 @@ exports.select = function() {
   var args    = Array.prototype.slice.call(arguments);
   var options = isObject(args[args.length - 1]) ? args.pop() : {};
   var result  = cc.defer();
-  var active  = [];
-  var cleanup = function() {
-    for (var i = 0; i < active.length; ++i)
-      active[i].cancel();
-  };
-  var i, op, channel, client;
+  var i, op;
 
   if (!options.priority)
     randomShuffle(args);
@@ -203,27 +196,14 @@ exports.select = function() {
     op = args[i];
     if (op == null)
       continue;
-
-    if (!Array.isArray(op)) {
-      channel = op;
-      client = makeClient(channel, result, cleanup);
-      channel.requestPull(client);
-    } else {
-      channel = op[0];
-      client = makeClient(channel, result, cleanup);
-      channel.requestPush(op[1], client);
-    }
-
-    active.push(client);
-
-    if (result.isResolved())
-      break;
+    else if (Array.isArray(op))
+      op[0].requestPush(op[1], delegate(op[0], result));
+    else
+      op.requestPull(delegate(op, result));
   }
 
-  if (options.hasOwnProperty('default') && !result.isResolved()) {
-    cleanup();
+  if (options.hasOwnProperty('default') && !result.isResolved())
     result.resolve({ channel: null, value: options['default'] });
-  }
 
   return result;
 };
