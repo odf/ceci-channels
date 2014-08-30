@@ -126,42 +126,28 @@ Channel.prototype.close = function() {
 };
 
 
-var chan = function(arg) {
+exports.chan = function(arg) {
   var buffer;
   if (typeof arg == "object")
     buffer = arg;
   else if (arg)
     buffer = new cb.Buffer(arg);
-  var ch = new Channel(buffer);
-
-  return {
-    push: function(val, a) {
-      a = a || cc.defer();
-      ch.requestPush(val, a);
-      return a;
-    };
-
-    pull: function(a) {
-      a = a || cc.defer();
-      ch.requestPull(a);
-      return a;
-    };
-
-    close: function(ch) {
-      ch.close();
-    };
-  };
+  return new Channel(buffer);
 };
 
-var push = function(ch, val) {
-  return ch.push(val);
+exports.push = function(ch, val) {
+  var a = cc.defer();
+  ch.requestPush(val, a);
+  return a;
 };
 
-var pull = function(ch) {
-  return ch.pull();
+exports.pull = function(ch) {
+  var a = cc.defer();
+  ch.requestPull(a);
+  return a;
 };
 
-var close = function(ch) {
+exports.close = function(ch) {
   ch.close();
 };
 
@@ -197,7 +183,7 @@ var delegate = function(channel, result) {
 };
 
 
-var select = function() {
+exports.select = function() {
   var args    = Array.prototype.slice.call(arguments);
   var options = isObject(args[args.length - 1]) ? args.pop() : {};
   var result  = cc.defer();
@@ -211,22 +197,13 @@ var select = function() {
     if (op == null)
       continue;
     else if (Array.isArray(op))
-      op[0].push(op[1], delegate(op[0], result));
+      op[0].requestPush(op[1], delegate(op[0], result));
     else
-      op.pull(delegate(op, result));
+      op.requestPull(delegate(op, result));
   }
 
   if (options.hasOwnProperty('default') && !result.isResolved())
     result.resolve({ channel: null, value: options['default'] });
 
   return result;
-};
-
-
-model.exports = {
-  chan  : chan,
-  pull  : pull,
-  push  : push,
-  close : close,
-  select: select
 };
