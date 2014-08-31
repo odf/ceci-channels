@@ -38,6 +38,6 @@
   },
   "scripts": {
     "prepublish": "make",
-    "test": "./node_modules/.bin/jasmine-node lib"
+    "test": "make && ./node_modules/.bin/jasmine-node lib"
   }
 }
