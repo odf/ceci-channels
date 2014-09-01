@@ -18,7 +18,7 @@ var merge = function() {
 };
 
 
-function model(type) {
+var model = function() {
   var _transitions = {
     init: function(state, arg) {
       return {
@@ -34,7 +34,7 @@ function model(type) {
     },
     push: function(state, val) {
       var h = state.count + 1;
-      state = state.merge({ count: h });
+      state = merge(state, { count: h });
 
       if (state.closed) {
         return {
@@ -60,12 +60,12 @@ function model(type) {
     },
     pull: function(state) {
       var h = state.count + 1;
-      state = state.merge({ count: h });
+      state = merge(state, { count: h });
 
       if (state.buffer.length > 0) {
         if (state.pushers.length > 0) {
           return {
-            state: state.merge({
+            state: merge(state, {
               buffer : state.buffer.slice(1).concat(state.pushers[0][1]),
               pushers: state.pushers.slice(1)
             }),
@@ -73,7 +73,7 @@ function model(type) {
           };
         } else {
           return {
-            state: state.merge({
+            state: merge(state, {
               buffer: state.buffer.slice(1)
             }),
             output: [[h, state.buffer[0]]]
@@ -98,8 +98,7 @@ function model(type) {
     },
     close: function(state) {
       return {
-        state: state.merge({
-          buffer : [],
+        state: merge(state, {
           pullers: [],
           pushers: [],
           closed : true
@@ -117,26 +116,84 @@ function model(type) {
 
   return {
     commands: function() {
-      var cmds = Object.keys(this._transitions).slice();
+      var cmds = Object.keys(_transitions).slice();
       cmds.splice(cmds.indexOf('init'), 1);
       return cmds;
     },
     randomArgs: function(command, size) {
-      if (this._hasArgument(command))
+      if (_hasArgument(command))
         return [comfy.randomInt(0, size)];
       else
         return [];
     },
 
     shrinkArgs: function(command, args) {
-      if (this._hasArgument(command) && args[0] > 0)
+      if (_hasArgument(command) && args[0] > 0)
         return [[args[0] - 1]];
       else
         return [];
     },
 
     apply: function(state, command, args) {
-      return this._transitions[command].apply(null, [state].concat(args));
+      var result =_transitions[command].apply(null, [state].concat(args));
+      return {
+        state : result.state,
+        output: JSON.stringify(result.output)
+      };
     }
   };
 };
+
+
+var handler = function(buffer, n) {
+  var _isResolved = false;
+
+  return {
+    resolve: function(val) {
+      _isResolved = true;
+      buffer.push([n, val]);
+    },
+    reject: function(err) {
+      _isResolved = true;
+      buffer.push([n, err]);
+    },
+    isResolved: function() {
+      return _isResolved;
+    }
+  };
+};
+
+
+var implementation = function() {
+  return {
+    apply: function(command, args) {
+      if (command == 'init') {
+        this._buffer = [];
+        this._count = 0;
+        this._channel = chan.chan(args[0]);
+      } else {
+        if (command != 'close')
+          this._count += 1;
+
+        var h = handler(this._buffer, this._count);
+        if (command == 'push')
+          this._channel.requestPush(args[0], h);
+        else if (command == 'pull')
+          this._channel.requestPull(h);
+        else
+          this._channel.close();
+
+        var result = this._buffer.slice();
+        this._buffer.splice(0, this._buffer.length);
+        return JSON.stringify(result);
+      }
+    }
+  };
+};
+
+
+describe('a channel', function() {
+  it('conforms to the channel model', function() {
+    expect(implementation()).toConformTo(model());
+  });
+});
