@@ -172,6 +172,7 @@ var implementation = function() {
         this._count = 0;
         this._channel = chan.chan(args[0]);
       } else {
+        this._buffer.splice(0, this._buffer.length);
         if (command != 'close')
           this._count += 1;
 
@@ -183,9 +184,7 @@ var implementation = function() {
         else
           this._channel.close();
 
-        var result = this._buffer.slice();
-        this._buffer.splice(0, this._buffer.length);
-        return JSON.stringify(result);
+        return JSON.stringify(this._buffer);
       }
     }
   };
