@@ -25,7 +25,7 @@
     "url": "https://github.com/odf/ceci-channels.git"
   },
   "dependencies": {
-    "ceci-buffers": "~0.1.0",
+    "ceci-buffers": "~0.2.0",
     "ceci-core": "~0.2.0",
     "comfychair": "~0.0.1"
   },
