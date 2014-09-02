@@ -193,6 +193,6 @@ var implementation = function() {
 
 describe('a channel', function() {
   it('conforms to the channel model', function() {
-    expect(implementation()).toConformTo(model());
+    expect(implementation()).toConformTo(model(), 500);
   });
 });
