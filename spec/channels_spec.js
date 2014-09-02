@@ -56,15 +56,15 @@ var model = function(type) {
       } else if (n > state.buffer.length || (n > 0 && type != CHECKED))
       {
         var b = state.buffer.slice();
-        if (b.length >= n) {
-          if (type == SLIDING)
-            b.shift();
-          else
-            b.pop();
+        if (n > b.length)
+          b.push(val);
+        else if (type == SLIDING) {
+          b.shift();
+          b.push(val);
         }
 
         return {
-          state : merge(state, { buffer: b.concat([val]) }),
+          state : merge(state, { buffer: b }),
           output: [[h, true]]
         };
       } else {
@@ -213,20 +213,20 @@ var implementation = function(type) {
 
 describe('a channel with a standard buffer', function() {
   it('conforms to the appropriate channel model', function() {
-    expect(implementation(CHECKED)).toConformTo(model(CHECKED), 500);
+    expect(implementation(CHECKED)).toConformTo(model(CHECKED), 1000);
   });
 });
 
 
 describe('a channel with a dropping buffer', function() {
   it('conforms to the appropriate channel model', function() {
-    expect(implementation(DROPPING)).toConformTo(model(DROPPING), 100);
+    expect(implementation(DROPPING)).toConformTo(model(DROPPING), 1000);
   });
 });
 
 
 describe('a channel with a sliding buffer', function() {
   it('conforms to the appropriate channel model', function() {
-    expect(implementation(SLIDING)).toConformTo(model(SLIDING), 100);
+    expect(implementation(SLIDING)).toConformTo(model(SLIDING), 1000);
   });
 });
