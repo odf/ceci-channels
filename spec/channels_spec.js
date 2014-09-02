@@ -2,6 +2,7 @@
 
 require('comfychair/jasmine');
 var comfy = require('comfychair');
+var cbuf = require('ceci-buffers');
 var chan = require('../index');
 
 
@@ -18,7 +19,12 @@ var merge = function() {
 };
 
 
-var model = function() {
+var CHECKED  = 0;
+var DROPPING = 1;
+var SLIDING  = 2;
+
+
+var model = function(type) {
   var _transitions = {
     init: function(state, arg) {
       return {
@@ -33,6 +39,7 @@ var model = function() {
       };
     },
     push: function(state, val) {
+      var n = state.bsize;
       var h = state.count + 1;
       state = merge(state, { count: h });
 
@@ -46,9 +53,18 @@ var model = function() {
           state : merge(state, { pullers: state.pullers.slice(1) }),
           output: [[state.pullers[0], val], [h, true]]
         };
-      } else if (state.bsize > state.buffer.length) {
+      } else if (n > state.buffer.length || (n > 0 && type != CHECKED))
+      {
+        var b = state.buffer.slice();
+        if (b.length >= n) {
+          if (type == SLIDING)
+            b.shift();
+          else
+            b.pop();
+        }
+
         return {
-          state : merge(state, { buffer: state.buffer.concat([val]) }),
+          state : merge(state, { buffer: b.concat([val]) }),
           output: [[h, true]]
         };
       } else {
@@ -164,13 +180,16 @@ var handler = function(buffer, n) {
 };
 
 
-var implementation = function() {
+var implementation = function(type) {
+  var Buffer = [cbuf.Buffer, cbuf.DroppingBuffer, cbuf.SlidingBuffer][type];
+
   return {
     apply: function(command, args) {
+      try {
       if (command == 'init') {
         this._buffer = [];
         this._count = 0;
-        this._channel = chan.chan(args[0]);
+        this._channel = chan.chan(args[0] ? new Buffer(args[0]) : 0);
       } else {
         this._buffer.splice(0, this._buffer.length);
         if (command != 'close')
@@ -186,13 +205,28 @@ var implementation = function() {
 
         return JSON.stringify(this._buffer);
       }
+      } catch(ex) { console.error(ex.stack); }
     }
   };
 };
 
 
-describe('a channel', function() {
-  it('conforms to the channel model', function() {
-    expect(implementation()).toConformTo(model(), 500);
+describe('a channel with a standard buffer', function() {
+  it('conforms to the appropriate channel model', function() {
+    expect(implementation(CHECKED)).toConformTo(model(CHECKED), 500);
+  });
+});
+
+
+describe('a channel with a dropping buffer', function() {
+  it('conforms to the appropriate channel model', function() {
+    expect(implementation(DROPPING)).toConformTo(model(DROPPING), 100);
+  });
+});
+
+
+describe('a channel with a sliding buffer', function() {
+  it('conforms to the appropriate channel model', function() {
+    expect(implementation(SLIDING)).toConformTo(model(SLIDING), 100);
   });
 });
