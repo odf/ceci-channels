@@ -230,3 +230,13 @@ describe('a channel with a sliding buffer', function() {
     expect(implementation(SLIDING)).toConformTo(model(SLIDING), 1000);
   });
 });
+
+
+module.exports = {
+  merge         : merge,
+  CHECKED       : CHECKED,
+  DROPPING      : DROPPING,
+  SLIDING       : SLIDING,
+  model         : model,
+  implementation: implementation
+};
