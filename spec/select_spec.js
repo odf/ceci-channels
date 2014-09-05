@@ -16,9 +16,6 @@ var randomIntList = function(minLen, maxLen, minVal, maxVal) {
 };
 
 
-var constructor = { 
-
-
 var model = function() {
   var _tryCh = function(state, i, cmd, arg) {
     return state[i].channel.apply(state[i].state, cmd, val);
