@@ -20,15 +20,19 @@ var constructor = {
 
 
 var model = function() {
+  var _tryCh = function(state, i, cmd, arg) {
+    return state[i].channel.apply(state[i].state, cmd, val);
+  };
+
   var _applyCh = function(state, i, cmd, arg) {
-    var result   = state[i].channel.apply(state[i].state, cmd, val);
+    var result   = _tryCh(state, i, cmd, arg);
     var newState = state.slice();
     newState[i].state = result.state;
     return {
       state : newState,
       output: result.output
     };
-  },
+  };
 
   var _transitions = {
     init: function(state, sizes, types) {
@@ -51,6 +55,49 @@ var model = function() {
     },
     close: function(state, i, val) {
       return _applyCh(state, i, 'close');
+    },
+    select: function(state, chans, vals, defaultVal) {
+      for (var i = 0; i < chans.length; ++i) {
+        var ch  = chans[i];
+        var val = vals[i];
+        var cmd = val < 0 ? 'pull' : 'push';
+        var res = _tryCh(state, ch, cmd, val);
+
+        if (res.output.length > 0) {
+          var newState = _applyCh(state, ch, cmd, val);
+          newState.output = newState.output.concat([['*']]);
+          return newState;
+        }
+      }
+      if (defaultVal !== undefined) {
+        return {
+          state : state,
+          output: [['*', defaultVal]]
+        };
+      }
+    }
+  };
+
+  return {
+    commands: function() {
+      var cmds = Object.keys(_transitions).slice();
+      cmds.splice(cmds.indexOf('init'), 1);
+      return cmds;
+    },
+    randomArgs: function(command, size) {
+      return _genArgs(command)(size);
+    },
+
+    shrinkArgs: function(command, args) {
+      return _shrinkArgs(command)(args);
+    },
+
+    apply: function(state, command, args) {
+      var result =_transitions[command].apply(null, [state].concat(args));
+      return {
+        state : result.state,
+        output: JSON.stringify(result.output)
+      };
     }
   };
 };
