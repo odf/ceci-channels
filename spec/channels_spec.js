@@ -138,7 +138,7 @@ var model = function(type) {
     },
     randomArgs: function(command, size) {
       if (_hasArgument(command))
-        return [comfy.randomInt(0, size)];
+        return [comfy.randomInt(0, Math.sqrt(size))];
       else
         return [];
     },
