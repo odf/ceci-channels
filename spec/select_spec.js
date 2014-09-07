@@ -7,21 +7,43 @@ var chan = require('../index');
 var channelSpec = require('./channel_spec');
 
 
-var randomIntList = function(minLen, maxLen, minVal, maxVal) {
+var randomList = function(minLen, maxLen, randomElement) {
   var n = comfy.randomInt(minLen, maxLen);
   var result = [];
   for (var i = 0; i < n; ++i)
-    result.push(comfy.randomInt(minVal, maxVal));
+    result.push(randomElement);
+  return result;
+};
+
+
+var shrinkList = function(list, elementShrinker) {
+  var result = [];
+  var n = list.length;
+  var i, head, tail;
+
+  for (i = 0; i < n; ++i)
+    result.push([].concat(list.slice(0, i), list.slice(i+1)));
+
+  for (i = 0; i < n; ++i) {
+    head = list.slice(0, i);
+    tail = list.slice(i+1);
+    elementShrinker(list[i]).forEach(function(x) {
+      result.push([].concat(head, [x], tail));
+    });
+  }
+
   return result;
 };
 
 
 var model = function() {
   var _tryCh = function(state, i, cmd, arg) {
+    i = i % state.length;
     return state[i].channel.apply(state[i].state, cmd, val);
   };
 
   var _applyCh = function(state, i, cmd, arg) {
+    i = i % state.length;
     var result   = _tryCh(state, i, cmd, arg);
     var newState = state.slice();
     newState[i].state = result.state;
@@ -50,7 +72,7 @@ var model = function() {
     pull: function(state, i) {
       return _applyCh(state, i, 'pull');
     },
-    close: function(state, i, val) {
+    close: function(state, i) {
       return _applyCh(state, i, 'close');
     },
     select: function(state, chans, vals, defaultVal) {
@@ -66,12 +88,60 @@ var model = function() {
           return newState;
         }
       }
-      if (defaultVal !== undefined) {
+      if (defaultVal < 0) {
         return {
           state : state,
           output: [['*', defaultVal]]
         };
       }
+    }
+  };
+
+  var _genArgs = {
+    init: function(size) {
+      var k = Math.sqrt(size);
+      var n = comfy.randomInt(0, k);
+      var sizes = [];
+      var types = [];
+      for (var i = 0; i < n; ++i) {
+        sizes.push(comfy.randomInt(0, k));
+        types.push(comfy.randomInt(0, 3));
+      }
+      return [sizes, types];
+    },
+    push: function(size) {
+      return [comfy.randomInt(0, size), comfy.randomInt(Math.sqrt(size))];
+    },
+    pull: function(size) {
+      return [comfy.randomInt(0, size)];
+    },
+    close: function(size) {
+      return [comfy.randomInt(0, size)];
+    },
+    select: function(size) {
+      var s = Math.floor(Math.sqrt(size) / 2);
+      var n = comfy.randomInt(0, k);
+      var chans = [];
+      var vals = [];
+      for (var i = 0; i < n; ++i) {
+        chans.push(comfy.randomInt(0, size));
+        vals.push(comfy.randomInt(-k, k));
+      }
+      var defaultVal = comfy.randomInt(-k, k);
+      return [chans, vals, defaultVal];
+    }
+  };
+
+  var _shrinkArgs = {
+    init: function(args) {
+    },
+    push: function(args) {
+    },
+    pull: function(args) {
+    },
+    close: function(args) {
+    },
+    select: function(args) {
     }
   };
 
@@ -81,12 +151,13 @@ var model = function() {
       cmds.splice(cmds.indexOf('init'), 1);
       return cmds;
     },
+
     randomArgs: function(command, size) {
-      return _genArgs(command)(size);
+      return _genArgs[command](size);
     },
 
     shrinkArgs: function(command, args) {
-      return _shrinkArgs(command)(args);
+      return _shrinkArgs[command](args);
     },
 
     apply: function(state, command, args) {
