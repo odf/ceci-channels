@@ -5,7 +5,7 @@ BUILD=../lib/spec
 .js.jso:
 		../node_modules/.bin/regenerator $^ >$@
 
-all:		channels_spec.jso
+all:		channels_spec.jso select_spec.jso
 		mkdir -p $(BUILD) && \
 		cp $^ $(BUILD) && \
 		cd $(BUILD) && \

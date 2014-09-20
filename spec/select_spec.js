@@ -4,14 +4,27 @@ require('comfychair/jasmine');
 var comfy = require('comfychair');
 var cbuf = require('ceci-buffers');
 var chan = require('../index');
-var channelSpec = require('./channel_spec');
+var channelSpec = require('./channels_spec');
+
+
+var merge = function() {
+  var args = Array.prototype.slice.call(arguments);
+  var result = args.every(Array.isArray) ? [] : {};
+  var i, obj, key;
+  for (i in args) {
+    obj = args[i];
+    for (key in obj)
+      result[key] = obj[key];
+  }
+  return result;
+};
 
 
 var randomList = function(minLen, maxLen, randomElement) {
   var n = comfy.randomInt(minLen, maxLen);
   var result = [];
   for (var i = 0; i < n; ++i)
-    result.push(randomElement);
+    result.push(randomElement());
   return result;
 };
 
@@ -36,6 +49,26 @@ var shrinkList = function(list, elementShrinker) {
 };
 
 
+var shrinkObject = function(obj, shrinkers) {
+  var result = [];
+
+  for (var k in obj) {
+    shrinkers[k](obj[k]).forEach(function(x) {
+      var tmp = merge(obj);
+      tmp[k] = x;
+      result.push(tmp);
+    });
+  }
+
+  return result;
+};
+
+
+var pack = function(list) {
+  return list.map(function(x) { return [x]; });
+};
+
+
 var model = function() {
   var _tryCh = function(state, i, cmd, arg) {
     i = i % state.length;
@@ -54,16 +87,16 @@ var model = function() {
   };
 
   var _transitions = {
-    init: function(state, sizes, types) {
+    init: function(state, descriptors) {
       return {
-        state: sizes.map(function(_, i) {
-          var channel = channelSpec.model(types[i]);
-          var state = channel.apply(null, 'init', sizes[i]);
+        state: specs.map(function(desc) {
+          var channel = channelSpec.model(desc.type);
+          var state   = channel.apply(null, 'init', desc.size);
           return {
             channel: channel,
             state  : state
           };
-        });
+        })
       };
     },
     push: function(state, i, val) {
@@ -75,10 +108,10 @@ var model = function() {
     close: function(state, i) {
       return _applyCh(state, i, 'close');
     },
-    select: function(state, chans, vals, defaultVal) {
-      for (var i = 0; i < chans.length; ++i) {
-        var ch  = chans[i];
-        var val = vals[i];
+    select: function(state, cmds, defaultVal) {
+      for (var i = 0; i < cmds.length; ++i) {
+        var ch  = cmds[i].chan;
+        var val = cmds[i].val;
         var cmd = val < 0 ? 'pull' : 'push';
         var res = _tryCh(state, ch, cmd, val);
 
@@ -100,14 +133,13 @@ var model = function() {
   var _genArgs = {
     init: function(size) {
       var k = Math.sqrt(size);
-      var n = comfy.randomInt(0, k);
-      var sizes = [];
-      var types = [];
-      for (var i = 0; i < n; ++i) {
-        sizes.push(comfy.randomInt(0, k));
-        types.push(comfy.randomInt(0, 3));
-      }
-      return [sizes, types];
+      var descriptors = randomList(0, k, function() {
+        return {
+          type: comfy.randomInt(0, 3),
+          size: comfy.randomInt(0, k)
+        };
+      });
+      return [descriptors];
     },
     push: function(size) {
       return [comfy.randomInt(0, size), comfy.randomInt(Math.sqrt(size))];
@@ -119,29 +151,46 @@ var model = function() {
       return [comfy.randomInt(0, size)];
     },
     select: function(size) {
-      var s = Math.floor(Math.sqrt(size) / 2);
-      var n = comfy.randomInt(0, k);
-      var chans = [];
-      var vals = [];
-      for (var i = 0; i < n; ++i) {
-        chans.push(comfy.randomInt(0, size));
-        vals.push(comfy.randomInt(-k, k));
-      }
+      var k = Math.floor(Math.sqrt(size) / 2);
+      var cmds = randomList(0, k, function() {
+        return {
+          chan: comfy.randomInt(0, size),
+          val : comfy.randomInt(-k, k)
+        };
+      });
       var defaultVal = comfy.randomInt(-k, k);
-      return [chans, vals, defaultVal];
+      return [cmds, defaultVal];
     }
   };
 
   var _shrinkArgs = {
     init: function(args) {
+      var shrinkers = {
+        type: comfy.shrinkInt,
+        size: comfy.shrinkInt
+      };
+      return pack(shrinkList(args[0], function(item) {
+        return shrinkObject(item, shrinkers);
+      }));
     },
     push: function(args) {
+      return shrinkObject(args, [comfy.shrinkInt, comfy.shrinkInt]);
     },
     pull: function(args) {
+      return pack(shrinkInt(args[0]));
     },
     close: function(args) {
+      return pack(shrinkInt(args[0]));
     },
     select: function(args) {
+      var cmdShrinkers = {
+        chan: comfy.shrinkInt,
+        val : comfy.shrinkInt
+      };
+      return shrinkObject(args, [
+        function(item) { return shrinkObject(item, cmdShrinkers); },
+        shrinkInt
+      ]);
     }
   };
 
