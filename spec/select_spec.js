@@ -72,26 +72,33 @@ var pack = function(list) {
 var model = function() {
   var _tryCh = function(state, i, cmd, arg) {
     i = i % state.length;
-    return state[i].channel.apply(state[i].state, cmd, val);
+    return state[i].channel.apply(state[i].state, cmd, [arg]);
   };
 
   var _applyCh = function(state, i, cmd, arg) {
+    if (state.length == 0) {
+      return {
+        state : state,
+        output: []
+      };
+    }
+
     i = i % state.length;
     var result   = _tryCh(state, i, cmd, arg);
     var newState = state.slice();
     newState[i].state = result.state;
     return {
       state : newState,
-      output: result.output
+      output: JSON.parse(result.output)
     };
   };
 
   var _transitions = {
     init: function(state, descriptors) {
       return {
-        state: specs.map(function(desc) {
+        state: descriptors.map(function(desc) {
           var channel = channelSpec.model(desc.type);
-          var state   = channel.apply(null, 'init', desc.size);
+          var state   = channel.apply(null, 'init', [desc.size]).state;
           return {
             channel: channel,
             state  : state
@@ -117,7 +124,7 @@ var model = function() {
 
         if (res.output.length > 0) {
           var newState = _applyCh(state, ch, cmd, val);
-          newState.output = newState.output.concat([['*']]);
+          newState.output = newState.output.concat(i);
           return newState;
         }
       }
@@ -125,6 +132,11 @@ var model = function() {
         return {
           state : state,
           output: [['*', defaultVal]]
+        };
+      } else {
+        return {
+          state: state,
+          output: []
         };
       }
     }
@@ -177,10 +189,10 @@ var model = function() {
       return shrinkObject(args, [comfy.shrinkInt, comfy.shrinkInt]);
     },
     pull: function(args) {
-      return pack(shrinkInt(args[0]));
+      return pack(comfy.shrinkInt(args[0]));
     },
     close: function(args) {
-      return pack(shrinkInt(args[0]));
+      return pack(comfy.shrinkInt(args[0]));
     },
     select: function(args) {
       var cmdShrinkers = {
@@ -189,7 +201,7 @@ var model = function() {
       };
       return shrinkObject(args, [
         function(item) { return shrinkObject(item, cmdShrinkers); },
-        shrinkInt
+        comfy.shrinkInt
       ]);
     }
   };
@@ -210,7 +222,7 @@ var model = function() {
     },
 
     apply: function(state, command, args) {
-      var result =_transitions[command].apply(null, [state].concat(args));
+      var result = _transitions[command].apply(null, [state].concat(args));
       return {
         state : result.state,
         output: JSON.stringify(result.output)
@@ -218,3 +230,75 @@ var model = function() {
     }
   };
 };
+
+
+var implementation = function() {
+  var _size, _channels;
+
+  var _commands = {
+    init: function(descriptors) {
+      _size = descriptors.length;
+      _channels = descriptors.map(function(desc) {
+        var ch = channelSpec.implementation(desc.type);
+        ch.apply('init', [desc.size]);
+        return ch;
+      });
+    },
+    push: function(i, val) {
+      if (_size == 0)
+        return [];
+      return _channels[i % _size].apply('push', [val]);
+    },
+    pull: function(i) {
+      if (_size == 0)
+        return [];
+      return _channels[i % _size].apply('pull', []);
+    },
+    close: function(i) {
+      if (_size == 0)
+        return [];
+      return _channels[i % _size].apply('close', []);
+    },
+    select: function(cmds, defaultVal) {
+      _channels.forEach(function(ch) { ch.clearLog(); });
+
+      var args = cmds.map(function(cmd) {
+        var ch  = cmd.chan;
+        var val = cmd.val;
+        return val ? [ch, val] : ch;
+      });
+
+      var options = { priority: true };
+      if (defaultVal < 0)
+        options['default'] = defaultVal;
+
+      chan.select.apply(null, args.concat(options));
+
+      for (var i = 0; i < _size; ++i) {
+        var log = _channels[i].getLog();
+        if (log.length > 0)
+          return log;
+      }
+
+      if (defaultVal < 0)
+        return [['*', defaultVal]];
+      else
+        return [];
+    }
+  };
+
+  return {
+    apply: function(command, args) {
+      try {
+        return JSON.stringify(_commands[command].apply(null, args));
+      } catch(ex) { console.error(ex.stack); }
+    }
+  };
+};
+
+
+describe('the select implementation', function() {
+  it('conforms to the appropriate model', function() {
+    expect(implementation()).toConformTo(model(), 100);
+  });
+});
