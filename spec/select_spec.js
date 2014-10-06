@@ -131,7 +131,7 @@ var model = function() {
 
           if (res.output.length > 0) {
             var result = _makeResult(state, ch, res);
-            result.output = result.output.concat(ch);
+            result.output = [ch, val < 0 ? result.output[0][1] : true];
             return result;
           }
         }
@@ -280,7 +280,7 @@ var implementation = function() {
         args = cmds.map(function(cmd) {
           var ch  = _channels[cmd.chan % _size]._channel;
           var val = cmd.val;
-          return val ? [ch, val] : ch;
+          return val >= 0 ? [ch, val] : ch;
         });
       } else
         args = [];
