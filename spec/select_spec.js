@@ -71,8 +71,20 @@ var pack = function(list) {
 
 var model = function() {
   var _tryCh = function(state, i, cmd, arg) {
-    i = i % state.length;
-    return state[i].channel.apply(state[i].state, cmd, [arg]);
+    var result = state[i].channel.apply(state[i].state, cmd, [arg]);
+    return {
+      state: result.state,
+      output: JSON.parse(result.output)
+    };
+  };
+
+  var _makeResult = function(state, i, result) {
+    var newState = state.slice();
+    newState[i].state = result.state;
+    return {
+      state : newState,
+      output: result.output
+    };
   };
 
   var _applyCh = function(state, i, cmd, arg) {
@@ -84,13 +96,7 @@ var model = function() {
     }
 
     i = i % state.length;
-    var result   = _tryCh(state, i, cmd, arg);
-    var newState = state.slice();
-    newState[i].state = result.state;
-    return {
-      state : newState,
-      output: JSON.parse(result.output)
-    };
+    return _makeResult(state, i, _tryCh(state, i, cmd, arg));
   };
 
   var _transitions = {
@@ -116,22 +122,25 @@ var model = function() {
       return _applyCh(state, i, 'close');
     },
     select: function(state, cmds, defaultVal) {
-      for (var i = 0; i < cmds.length; ++i) {
-        var ch  = cmds[i].chan;
-        var val = cmds[i].val;
-        var cmd = val < 0 ? 'pull' : 'push';
-        var res = _tryCh(state, ch, cmd, val);
+      if (state.length > 0) {
+        for (var i = 0; i < cmds.length; ++i) {
+          var ch  = cmds[i].chan % state.length;
+          var val = cmds[i].val;
+          var cmd = val < 0 ? 'pull' : 'push';
+          var res = _tryCh(state, ch, cmd, val);
 
-        if (res.output.length > 0) {
-          var newState = _applyCh(state, ch, cmd, val);
-          newState.output = newState.output.concat(i);
-          return newState;
+          if (res.output.length > 0) {
+            var result = _makeResult(state, ch, res);
+            result.output = result.output.concat(ch);
+            return result;
+          }
         }
       }
+
       if (defaultVal < 0) {
         return {
           state : state,
-          output: [['*', defaultVal]]
+          output: [-1, defaultVal]
         };
       } else {
         return {
@@ -200,7 +209,12 @@ var model = function() {
         val : comfy.shrinkInt
       };
       return shrinkObject(args, [
-        function(item) { return shrinkObject(item, cmdShrinkers); },
+        function(cmds) {
+          return shrinkList(cmds, 
+                            function(item) {
+                              return shrinkObject(item, cmdShrinkers);
+                            });
+        },
         comfy.shrinkInt
       ]);
     }
@@ -247,42 +261,51 @@ var implementation = function() {
     push: function(i, val) {
       if (_size == 0)
         return [];
-      return _channels[i % _size].apply('push', [val]);
+      return JSON.parse(_channels[i % _size].apply('push', [val]));
     },
     pull: function(i) {
       if (_size == 0)
         return [];
-      return _channels[i % _size].apply('pull', []);
+      return JSON.parse(_channels[i % _size].apply('pull', []));
     },
     close: function(i) {
       if (_size == 0)
         return [];
-      return _channels[i % _size].apply('close', []);
+      return JSON.parse(_channels[i % _size].apply('close', []));
     },
     select: function(cmds, defaultVal) {
-      _channels.forEach(function(ch) { ch.clearLog(); });
+      var args;
 
-      var args = cmds.map(function(cmd) {
-        var ch  = cmd.chan;
-        var val = cmd.val;
-        return val ? [ch, val] : ch;
-      });
+      if (_size > 0) {
+        args = cmds.map(function(cmd) {
+          var ch  = _channels[cmd.chan % _size]._channel;
+          var val = cmd.val;
+          return val ? [ch, val] : ch;
+        });
+      } else
+        args = [];
 
       var options = { priority: true };
       if (defaultVal < 0)
         options['default'] = defaultVal;
 
-      chan.select.apply(null, args.concat(options));
+      var deferred = chan.select.apply(null, args.concat(options));
 
-      for (var i = 0; i < _size; ++i) {
-        var log = _channels[i].getLog();
-        if (log.length > 0)
-          return log;
-      }
+      if (deferred.isResolved()) {
+        var result;
 
-      if (defaultVal < 0)
-        return [['*', defaultVal]];
-      else
+        deferred.then(function(output) {
+          if (output.channel == null)
+            result = [-1, output.value];
+          else
+            for (var i = 0; i < _size; ++i) {
+              if (output.channel == _channels[i]._channel)
+                result = [i, output.value];
+            }
+        });
+
+        return result;
+      } else
         return [];
     }
   };
