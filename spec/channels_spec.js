@@ -161,17 +161,19 @@ var model = function(type) {
 };
 
 
-var handler = function(log, n) {
+var handler = function(log, n, h) {
   var _isResolved = false;
 
   return {
     resolve: function(val) {
       _isResolved = true;
       log.push([n, val]);
+      h && h.resolve(val);
     },
     reject: function(err) {
       _isResolved = true;
       log.push([n, err]);
+      h && h.reject(err);
     },
     isResolved: function() {
       return _isResolved;
@@ -192,6 +194,18 @@ var implementation = function(type) {
       return JSON.stringify(this._log);
     },
 
+    requestPush: function(val, h) {
+      this.clearLog();
+      this._count += 1;
+      this._channel.requestPush(val, handler(this._log, this._count, h));
+    },
+
+    requestPull: function(h) {
+      this.clearLog();
+      this._count += 1;
+      this._channel.requestPull(handler(this._log, this._count, h));
+    },
+
     apply: function(command, args) {
       try {
       if (command == 'init') {
@@ -200,14 +214,11 @@ var implementation = function(type) {
         this._channel = chan.chan(args[0] ? new Buffer(args[0]) : 0);
       } else {
         this.clearLog();
-        if (command != 'close')
-          this._count += 1;
 
-        var h = handler(this._log, this._count);
         if (command == 'push')
-          this._channel.requestPush(args[0], h);
+          this.requestPush(args[0]);
         else if (command == 'pull')
-          this._channel.requestPull(h);
+          this.requestPull();
         else
           this._channel.close();
 
@@ -219,25 +230,25 @@ var implementation = function(type) {
 };
 
 
-// describe('a channel with a standard buffer', function() {
-//   it('conforms to the appropriate channel model', function() {
-//     expect(implementation(CHECKED)).toConformTo(model(CHECKED), 1000);
-//   });
-// });
+describe('a channel with a standard buffer', function() {
+  it('conforms to the appropriate channel model', function() {
+    expect(implementation(CHECKED)).toConformTo(model(CHECKED), 1000);
+  });
+});
 
 
-// describe('a channel with a dropping buffer', function() {
-//   it('conforms to the appropriate channel model', function() {
-//     expect(implementation(DROPPING)).toConformTo(model(DROPPING), 1000);
-//   });
-// });
+describe('a channel with a dropping buffer', function() {
+  it('conforms to the appropriate channel model', function() {
+    expect(implementation(DROPPING)).toConformTo(model(DROPPING), 1000);
+  });
+});
 
 
-// describe('a channel with a sliding buffer', function() {
-//   it('conforms to the appropriate channel model', function() {
-//     expect(implementation(SLIDING)).toConformTo(model(SLIDING), 1000);
-//   });
-// });
+describe('a channel with a sliding buffer', function() {
+  it('conforms to the appropriate channel model', function() {
+    expect(implementation(SLIDING)).toConformTo(model(SLIDING), 1000);
+  });
+});
 
 
 module.exports = {

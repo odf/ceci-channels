@@ -270,24 +270,27 @@ var implementation = function() {
     push: function(i, val) {
       if (_size == 0)
         return [];
-      return JSON.parse(_channels[i % _size].apply('push', [val]));
+      var output = _channels[i % _size].apply('push', [val]);
+      return JSON.parse(output);
     },
     pull: function(i) {
       if (_size == 0)
         return [];
-      return JSON.parse(_channels[i % _size].apply('pull', []));
+      var output = _channels[i % _size].apply('pull', []);
+      return JSON.parse(output);
     },
     close: function(i) {
       if (_size == 0)
         return [];
-      return JSON.parse(_channels[i % _size].apply('close', []));
+      var output = _channels[i % _size].apply('close', []);
+      return JSON.parse(output);
     },
     select: function(cmds, defaultVal) {
       var args;
 
       if (_size > 0) {
         args = cmds.map(function(cmd) {
-          var ch  = _channels[cmd.chan % _size]._channel;
+          var ch  = _channels[cmd.chan % _size];
           var val = cmd.val;
           return val >= 0 ? [ch, val] : ch;
         });
@@ -308,7 +311,7 @@ var implementation = function() {
             result = [-1, output.value];
           else
             for (var i = 0; i < _size; ++i) {
-              if (output.channel == _channels[i]._channel)
+              if (output.channel == _channels[i])
                 result = [i, output.value];
             }
         });
