@@ -7,14 +7,23 @@ var chan = require('../index');
 var channelSpec = require('./channels_spec');
 
 
-var merge = function() {
+var isObject = function(obj) {
+  return !!obj && typeof obj == 'object';
+};
+
+
+var deepMerge = function() {
   var args = Array.prototype.slice.call(arguments);
   var result = args.every(Array.isArray) ? [] : {};
   var i, obj, key;
   for (i in args) {
     obj = args[i];
-    for (key in obj)
-      result[key] = obj[key];
+    for (key in obj) {
+      if (isObject(obj[key]))
+        result[key] = deepMerge(result[key] || [], obj[key]);
+      else
+        result[key] = obj[key];
+    }
   }
   return result;
 };
@@ -54,7 +63,7 @@ var shrinkObject = function(obj, shrinkers) {
 
   for (var k in obj) {
     shrinkers[k](obj[k]).forEach(function(x) {
-      var tmp = merge(obj);
+      var tmp = deepMerge(obj);
       tmp[k] = x;
       result.push(tmp);
     });
@@ -79,8 +88,8 @@ var model = function() {
   };
 
   var _makeResult = function(state, i, result) {
-    var newState = state.slice();
-    newState[i].state = result.state;
+    var newState = deepMerge(state);
+    newState[i].state = deepMerge(result.state);
     return {
       state : newState,
       output: result.output
@@ -127,13 +136,13 @@ var model = function() {
           var ch  = cmds[i].chan % state.length;
           var val = cmds[i].val;
           var cmd = val < 0 ? 'pull' : 'push';
-          var res = _tryCh(state, ch, cmd, val);
+          var res = _applyCh(state, ch, cmd, val);
 
           if (res.output.length > 0) {
-            var result = _makeResult(state, ch, res);
-            result.output = [ch, val < 0 ? result.output[0][1] : true];
-            return result;
-          }
+            res.output = [ch, val < 0 ? res.output[0][1] : true];
+            return res;
+          } else
+            state = res.state;
         }
       }
 
@@ -163,7 +172,7 @@ var model = function() {
       return [descriptors];
     },
     push: function(size) {
-      return [comfy.randomInt(0, size), comfy.randomInt(Math.sqrt(size))];
+      return [comfy.randomInt(0, size), comfy.randomInt(0, Math.sqrt(size))];
     },
     pull: function(size) {
       return [comfy.randomInt(0, size)];
