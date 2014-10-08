@@ -168,12 +168,12 @@ var handler = function(log, n, h) {
     resolve: function(val) {
       _isResolved = true;
       log.push([n, val]);
-      h && h.resolve(val);
+      h && !h.isResolved() && h.resolve(val);
     },
     reject: function(err) {
       _isResolved = true;
       log.push([n, err]);
-      h && h.reject(err);
+      h && !h.isResolved() && h.reject(err);
     },
     isResolved: function() {
       return _isResolved;
