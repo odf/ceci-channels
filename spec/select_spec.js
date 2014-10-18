@@ -12,6 +12,19 @@ var isObject = function(obj) {
 };
 
 
+var merge = function() {
+  var args = Array.prototype.slice.call(arguments);
+  var result = args.every(Array.isArray) ? [] : {};
+  var i, obj, key;
+  for (i in args) {
+    obj = args[i];
+    for (key in obj)
+      result[key] = obj[key];
+  }
+  return result;
+};
+
+
 var deepMerge = function() {
   var args = Array.prototype.slice.call(arguments);
   var result = args.every(Array.isArray) ? [] : {};
@@ -78,6 +91,11 @@ var pack = function(list) {
 };
 
 
+var last = function(a) {
+  return a[a.length-1];
+};
+
+
 var model = function() {
   var _tryCh = function(state, i, cmd, arg) {
     var result = state[i].channel.apply(state[i].state, cmd, [arg]);
@@ -108,6 +126,35 @@ var model = function() {
     return _makeResult(state, i, _tryCh(state, i, cmd, arg));
   };
 
+  var _cleanupChannelState = function(state, badPushers, badPullers) {
+    var pushers = state.pushers.filter(function(p) {
+      return badPushers.every(function(q) {
+        return p[0] != q[0] || p[1] != q[1];
+      });
+    });
+    var pullers = state.pullers.filter(function(p) {
+      return badPullers.every(function(q) {
+        return p != q;
+      });
+    });
+
+    var result = merge(state, {
+      pushers: pushers,
+      pullers: pullers
+    });
+
+    return result;
+  };
+
+  var _cleanupState = function(state, badPushers, badPullers) {
+    return state.map(function(entry, i) {
+      return {
+        channel: entry.channel,
+        state  : _cleanupChannelState(entry.state, badPushers[i], badPullers[i])
+      };
+    });
+  };
+
   var _transitions = {
     init: function(state, descriptors) {
       return {
@@ -131,24 +178,34 @@ var model = function() {
       return _applyCh(state, i, 'close');
     },
     select: function(state, cmds, defaultVal) {
+      var pushers = state.map(function() { return []; });
+      var pullers = state.map(function() { return []; });
+
       if (state.length > 0) {
         for (var i = 0; i < cmds.length; ++i) {
           var ch  = cmds[i].chan % state.length;
           var val = cmds[i].val;
-          var cmd = val < 0 ? 'pull' : 'push';
+          var cmd = val > 0 ? 'push' : 'pull';
           var res = _applyCh(state, ch, cmd, val);
 
           if (res.output.length > 0) {
-            res.output = [ch, res.output[res.output.length-1][1]];
-            return res;
-          } else
+            return {
+              state : _cleanupState(res.state, pushers, pullers),
+              output: [ch, last(res.output)[1]]
+            };
+          } else {
             state = res.state;
+            if (cmd == 'pull')
+              pullers[ch].push(last(state[ch].state.pullers));
+            else
+              pushers[ch].push(last(state[ch].state.pushers));
+          }
         }
       }
 
-      if (defaultVal < 0) {
+      if (defaultVal > 0) {
         return {
-          state : state,
+          state : _cleanupState(state, pushers, pullers),
           output: [-1, defaultVal]
         };
       } else {
@@ -292,13 +349,13 @@ var implementation = function() {
         args = cmds.map(function(cmd) {
           var ch  = _channels[cmd.chan % _size];
           var val = cmd.val;
-          return val >= 0 ? [ch, val] : ch;
+          return val > 0 ? [ch, val] : ch;
         });
       } else
         args = [];
 
       var options = { priority: true };
-      if (defaultVal < 0)
+      if (defaultVal > 0)
         options['default'] = defaultVal;
 
       var deferred = chan.select.apply(null, args.concat(options));
