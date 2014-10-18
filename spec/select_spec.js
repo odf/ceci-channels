@@ -139,7 +139,7 @@ var model = function() {
           var res = _applyCh(state, ch, cmd, val);
 
           if (res.output.length > 0) {
-            res.output = [ch, val < 0 ? res.output[0][1] : true];
+            res.output = [ch, res.output[res.output.length-1][1]];
             return res;
           } else
             state = res.state;

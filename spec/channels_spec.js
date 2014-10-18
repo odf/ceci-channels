@@ -53,8 +53,7 @@ var model = function(type) {
           state : merge(state, { pullers: state.pullers.slice(1) }),
           output: [[state.pullers[0], val], [h, true]]
         };
-      } else if (n > state.buffer.length || (n > 0 && type != CHECKED))
-      {
+      } else if (n > state.buffer.length || (n > 0 && type != CHECKED)) {
         var b = state.buffer.slice();
         if (n > b.length)
           b.push(val);
@@ -176,7 +175,7 @@ var handler = function(log, n, h) {
       h && !h.isResolved() && h.reject(err);
     },
     isResolved: function() {
-      return _isResolved;
+      return _isResolved || (h && h.isResolved());
     }
   };
 };
@@ -232,21 +231,21 @@ var implementation = function(type) {
 
 describe('a channel with a standard buffer', function() {
   it('conforms to the appropriate channel model', function() {
-    expect(implementation(CHECKED)).toConformTo(model(CHECKED), 1000);
+    expect(implementation(CHECKED)).toConformTo(model(CHECKED));
   });
 });
 
 
 describe('a channel with a dropping buffer', function() {
   it('conforms to the appropriate channel model', function() {
-    expect(implementation(DROPPING)).toConformTo(model(DROPPING), 1000);
+    expect(implementation(DROPPING)).toConformTo(model(DROPPING));
   });
 });
 
 
 describe('a channel with a sliding buffer', function() {
   it('conforms to the appropriate channel model', function() {
-    expect(implementation(SLIDING)).toConformTo(model(SLIDING), 1000);
+    expect(implementation(SLIDING)).toConformTo(model(SLIDING));
   });
 });
 
